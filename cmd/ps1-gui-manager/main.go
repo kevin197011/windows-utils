@@ -80,27 +80,31 @@ func main() {
 	// Create execute button
 	executeBtn = widget.NewButton("Execute", func() {
 		if selectedScript == nil {
-			appendLog(logOutput, &logMutex, "Error: No script selected")
+			appendLog(myApp, logOutput, &logMutex, "Error: No script selected\n")
 			return
 		}
 
 		executeBtn.SetText("Executing...")
 		executeBtn.Disable()
 		statusLabel.SetText("Status: Executing...")
-		appendLog(logOutput, &logMutex, "\n--- Executing: "+selectedScript.Name+" ---\n")
+		appendLog(myApp, logOutput, &logMutex, "\n--- Executing: "+selectedScript.Name+" ---\n")
 
 		// Execute script in goroutine to avoid blocking UI
 		go func() {
-			err := executeScript(selectedScript, logOutput, &logMutex)
-			executeBtn.SetText("Execute")
-			executeBtn.Enable()
-			if err != nil {
-				statusLabel.SetText("Status: Error")
-				appendLog(logOutput, &logMutex, "\nError: "+err.Error()+"\n")
-			} else {
-				statusLabel.SetText("Status: Completed")
-				appendLog(logOutput, &logMutex, "\n--- Execution completed ---\n")
-			}
+			err := executeScript(selectedScript, myApp, logOutput, &logMutex)
+			
+			// Update UI on main thread using fyne.DoAndWait
+			fyne.DoAndWait(func() {
+				executeBtn.SetText("Execute")
+				executeBtn.Enable()
+				if err != nil {
+					statusLabel.SetText("Status: Error")
+					appendLog(myApp, logOutput, &logMutex, "\nError: "+err.Error()+"\n")
+				} else {
+					statusLabel.SetText("Status: Completed")
+					appendLog(myApp, logOutput, &logMutex, "\n--- Execution completed ---\n")
+				}
+			})
 		}()
 	})
 	executeBtn.Disable()
@@ -108,8 +112,8 @@ func main() {
 	// Create clear log button
 	clearBtn := widget.NewButton("Clear Log", func() {
 		logMutex.Lock()
+		defer logMutex.Unlock()
 		logOutput.SetText("")
-		logMutex.Unlock()
 	})
 
 	// Handle script selection
@@ -198,7 +202,7 @@ func extractDescription(content string) string {
 	return ""
 }
 
-func executeScript(script *Script, logOutput *widget.Entry, logMutex *sync.Mutex) error {
+func executeScript(script *Script, app fyne.App, logOutput *widget.Entry, logMutex *sync.Mutex) error {
 	// Create temporary file
 	tmpFile, err := os.CreateTemp("", "ps1-script-*.ps1")
 	if err != nil {
@@ -220,7 +224,7 @@ func executeScript(script *Script, logOutput *widget.Entry, logMutex *sync.Mutex
 	}
 
 	// Execute PowerShell script
-	appendLog(logOutput, logMutex, fmt.Sprintf("Running: %s -ExecutionPolicy Bypass -File %s\n", powershellPath, tmpFile.Name()))
+	appendLog(app, logOutput, logMutex, fmt.Sprintf("Running: %s -ExecutionPolicy Bypass -File %s\n", powershellPath, tmpFile.Name()))
 
 	cmd := exec.Command(powershellPath, "-ExecutionPolicy", "Bypass", "-File", tmpFile.Name())
 	
@@ -245,11 +249,11 @@ func executeScript(script *Script, logOutput *widget.Entry, logMutex *sync.Mutex
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		streamOutput(stdout, logOutput, logMutex, false)
+		streamOutput(stdout, app, logOutput, logMutex, false)
 	}()
 	go func() {
 		defer wg.Done()
-		streamOutput(stderr, logOutput, logMutex, true)
+		streamOutput(stderr, app, logOutput, logMutex, true)
 	}()
 
 	// Wait for completion
@@ -269,28 +273,27 @@ func executeScript(script *Script, logOutput *widget.Entry, logMutex *sync.Mutex
 	return nil
 }
 
-func streamOutput(pipe io.ReadCloser, logOutput *widget.Entry, logMutex *sync.Mutex, isError bool) {
+func streamOutput(pipe io.ReadCloser, app fyne.App, logOutput *widget.Entry, logMutex *sync.Mutex, isError bool) {
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if isError {
-			appendLog(logOutput, logMutex, "[ERROR] "+line+"\n")
+			appendLog(app, logOutput, logMutex, "[ERROR] "+line+"\n")
 		} else {
-			appendLog(logOutput, logMutex, line+"\n")
+			appendLog(app, logOutput, logMutex, line+"\n")
 		}
 	}
 }
 
-func appendLog(logOutput *widget.Entry, logMutex *sync.Mutex, text string) {
-	logMutex.Lock()
-	defer logMutex.Unlock()
-	currentText := logOutput.Text
-	logOutput.SetText(currentText + text)
-	// Auto-scroll to bottom - set cursor to end
-	lines := strings.Split(logOutput.Text, "\n")
-	if len(lines) > 0 {
-		logOutput.CursorRow = len(lines) - 1
-	}
+func appendLog(app fyne.App, logOutput *widget.Entry, logMutex *sync.Mutex, text string) {
+	// Update UI on main thread
+	fyne.DoAndWait(func() {
+		logMutex.Lock()
+		defer logMutex.Unlock()
+		currentText := logOutput.Text
+		logOutput.SetText(currentText + text)
+		logOutput.Refresh()
+	})
 }
 
 func findPowerShell() (string, error) {
