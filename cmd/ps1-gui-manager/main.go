@@ -30,12 +30,33 @@ type Script struct {
 }
 
 func main() {
+	// Check if another instance is already running
+	// If check fails, continue anyway (don't block startup)
+	isFirstInstance, err := checkSingleInstance()
+	if err != nil {
+		// Log warning but continue - allows app to work even if mutex creation fails
+		fmt.Fprintf(os.Stderr, "Warning: Could not check for existing instance: %v\n", err)
+	}
+	if !isFirstInstance && err == nil {
+		// Only exit if we successfully detected another instance
+		// Show message box on Windows instead of just stderr
+		showMessage("PS1 GUI Manager", "Another instance is already running.")
+		os.Exit(0)
+	}
+	defer releaseSingleInstance()
+
 	myApp := app.NewWithID("com.windows-utils.ps1-gui-manager")
 	// Apply geek theme
 	myApp.Settings().SetTheme(&GeekTheme{})
 	
 	myWindow := myApp.NewWindow("PS1 Script Manager")
 	myWindow.Resize(fyne.NewSize(900, 700))
+	myWindow.CenterOnScreen() // Center window on screen
+	
+	// Prevent closing the window - hide it instead (optional, for system tray integration)
+	// myWindow.SetCloseIntercept(func() {
+	// 	myWindow.Hide()
+	// })
 
 	// Load scripts from embedded resources
 	scripts, err := loadScripts()
@@ -166,7 +187,10 @@ func main() {
 	content.SetOffset(0.3) // 30% for script list, 70% for details
 
 	myWindow.SetContent(content)
-	myWindow.ShowAndRun()
+	myWindow.CenterOnScreen() // Center window on screen
+	myWindow.Show()           // Show window
+	myWindow.RequestFocus()   // Request focus to bring window to front
+	myApp.Run()               // Run application loop
 }
 
 func loadScripts() ([]Script, error) {
