@@ -238,9 +238,12 @@ func executeScript(script *Script, app fyne.App, logOutput *widget.Entry, logMut
 	}
 
 	// Execute PowerShell script
-	appendLog(app, logOutput, logMutex, fmt.Sprintf("Running: %s -ExecutionPolicy Bypass -File %s\n", powershellPath, tmpFile.Name()))
+	appendLog(app, logOutput, logMutex, fmt.Sprintf("Running: %s -ExecutionPolicy Bypass -WindowStyle Hidden -File %s\n", powershellPath, tmpFile.Name()))
 
-	cmd := exec.Command(powershellPath, "-ExecutionPolicy", "Bypass", "-File", tmpFile.Name())
+	cmd := exec.Command(powershellPath, "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-NoProfile", "-NonInteractive", "-File", tmpFile.Name())
+	
+	// Hide console window on Windows
+	hideWindow(cmd)
 	
 	// Capture stdout and stderr
 	stdout, err := cmd.StdoutPipe()
