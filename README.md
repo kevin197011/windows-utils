@@ -57,6 +57,15 @@ go run ./cmd/ps1-gui-manager
 5. Monitor execution progress in the log area
 6. Review execution results
 
+### Troubleshooting
+
+If the application doesn't start or show a window on Windows Server:
+
+1. **Check the log file**: The application creates `ps1-gui-manager.log` in the current directory with startup information
+2. **Desktop Experience required**: Windows Server needs "Desktop Experience" feature installed to run GUI applications
+3. **Server Core not supported**: Full installation mode is required (not Server Core)
+4. **See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed troubleshooting steps**
+
 ### Script Organization
 
 Scripts are stored in the `scripts/` directory and automatically embedded into the binary during compilation. To add new scripts:

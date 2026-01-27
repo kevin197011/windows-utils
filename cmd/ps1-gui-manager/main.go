@@ -30,28 +30,64 @@ type Script struct {
 }
 
 func main() {
+	// Write startup log to file for debugging (especially on servers)
+	logFile, logErr := os.OpenFile("ps1-gui-manager.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if logErr == nil {
+		defer logFile.Close()
+		fmt.Fprintf(logFile, "=== PS1 GUI Manager Starting ===\n")
+		fmt.Fprintf(logFile, "PID: %d\n", os.Getpid())
+	}
+
 	// Check if another instance is already running
 	// If check fails, continue anyway (don't block startup)
 	isFirstInstance, err := checkSingleInstance()
 	if err != nil {
 		// Log warning but continue - allows app to work even if mutex creation fails
-		fmt.Fprintf(os.Stderr, "Warning: Could not check for existing instance: %v\n", err)
+		msg := fmt.Sprintf("Warning: Could not check for existing instance: %v\n", err)
+		fmt.Fprintf(os.Stderr, msg)
+		if logFile != nil {
+			fmt.Fprintf(logFile, msg)
+		}
 	}
 	if !isFirstInstance && err == nil {
 		// Only exit if we successfully detected another instance
+		msg := "Another instance is already running.\n"
+		fmt.Fprintf(os.Stderr, msg)
+		if logFile != nil {
+			fmt.Fprintf(logFile, msg)
+		}
 		// Show message box on Windows instead of just stderr
 		showMessage("PS1 GUI Manager", "Another instance is already running.")
 		os.Exit(0)
 	}
 	defer releaseSingleInstance()
 
+	if logFile != nil {
+		fmt.Fprintf(logFile, "Creating Fyne application...\n")
+	}
+	
 	myApp := app.NewWithID("com.windows-utils.ps1-gui-manager")
 	// Apply geek theme
 	myApp.Settings().SetTheme(&GeekTheme{})
 	
+	if logFile != nil {
+		fmt.Fprintf(logFile, "Creating window...\n")
+	}
+	
 	myWindow := myApp.NewWindow("PS1 Script Manager")
 	myWindow.Resize(fyne.NewSize(900, 700))
-	myWindow.CenterOnScreen() // Center window on screen
+	
+	// Try to center, but don't fail if it doesn't work
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if logFile != nil {
+					fmt.Fprintf(logFile, "Warning: Could not center window: %v\n", r)
+				}
+			}
+		}()
+		myWindow.CenterOnScreen()
+	}()
 	
 	// Prevent closing the window - hide it instead (optional, for system tray integration)
 	// myWindow.SetCloseIntercept(func() {
@@ -59,15 +95,53 @@ func main() {
 	// })
 
 	// Load scripts from embedded resources
+	if logFile != nil {
+		fmt.Fprintf(logFile, "Loading scripts from embedded resources...\n")
+	}
 	scripts, err := loadScripts()
 	if err != nil {
-		showError(myWindow, fmt.Sprintf("Failed to load scripts: %v", err))
+		errorMsg := fmt.Sprintf("Failed to load scripts: %v", err)
+		if logFile != nil {
+			fmt.Fprintf(logFile, "ERROR: %s\n", errorMsg)
+			logFile.Sync()
+		}
+		// Try to show error dialog, but if GUI fails, at least log it
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if logFile != nil {
+						fmt.Fprintf(logFile, "CRITICAL: GUI error dialog failed: %v\n", r)
+					}
+				}
+			}()
+			showError(myWindow, errorMsg)
+		}()
 		return
 	}
 
 	if len(scripts) == 0 {
-		showError(myWindow, "No scripts found. Please ensure scripts are embedded in the binary.")
+		errorMsg := "No scripts found. Please ensure scripts are embedded in the binary."
+		if logFile != nil {
+			fmt.Fprintf(logFile, "ERROR: %s\n", errorMsg)
+			logFile.Sync()
+		}
+		// Try to show error dialog, but if GUI fails, at least log it
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if logFile != nil {
+						fmt.Fprintf(logFile, "CRITICAL: GUI error dialog failed: %v\n", r)
+					}
+				}
+			}()
+			showError(myWindow, errorMsg)
+		}()
 		return
+	}
+
+	if logFile != nil {
+		fmt.Fprintf(logFile, "Loaded %d scripts\n", len(scripts))
+		fmt.Fprintf(logFile, "Setting up UI...\n")
 	}
 
 	// Create UI components with monospace font for geek style
@@ -187,10 +261,54 @@ func main() {
 	content.SetOffset(0.3) // 30% for script list, 70% for details
 
 	myWindow.SetContent(content)
-	myWindow.CenterOnScreen() // Center window on screen
-	myWindow.Show()           // Show window
-	myWindow.RequestFocus()   // Request focus to bring window to front
-	myApp.Run()               // Run application loop
+	
+	// Try to center, but don't fail if it doesn't work (e.g., on servers)
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if logFile != nil {
+					fmt.Fprintf(logFile, "Warning: Could not center window: %v\n", r)
+				}
+			}
+		}()
+		myWindow.CenterOnScreen()
+	}()
+	
+	if logFile != nil {
+		fmt.Fprintf(logFile, "Showing window and starting application loop...\n")
+		logFile.Sync()
+	}
+	
+	// Show window with error handling
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if logFile != nil {
+					fmt.Fprintf(logFile, "CRITICAL: Failed to show window: %v\n", r)
+					fmt.Fprintf(logFile, "This may indicate missing GUI support on Windows Server.\n")
+					fmt.Fprintf(logFile, "Please ensure Desktop Experience is installed.\n")
+					logFile.Sync()
+				}
+				// Show message box as fallback
+				showMessage("PS1 GUI Manager", fmt.Sprintf("Failed to start GUI: %v\n\nCheck ps1-gui-manager.log for details.", r))
+			}
+		}()
+		myWindow.Show()           // Show window
+		myWindow.RequestFocus()   // Request focus to bring window to front
+	}()
+	
+	if logFile != nil {
+		fmt.Fprintf(logFile, "Application ready. Entering event loop...\n")
+		logFile.Sync()
+	}
+	
+	// Run application loop
+	myApp.Run()
+	
+	if logFile != nil {
+		fmt.Fprintf(logFile, "Application exited.\n")
+		logFile.Sync()
+	}
 }
 
 func loadScripts() ([]Script, error) {
