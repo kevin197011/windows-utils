@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -76,6 +77,9 @@ func main() {
 	
 	myWindow := myApp.NewWindow("PS1 Script Manager")
 	myWindow.Resize(fyne.NewSize(900, 700))
+	
+	// Set window to not be minimized
+	myWindow.SetFixedSize(false) // Allow resizing
 	
 	// Try to center, but don't fail if it doesn't work
 	func() {
@@ -295,10 +299,35 @@ func main() {
 		}()
 		myWindow.Show()           // Show window
 		myWindow.RequestFocus()   // Request focus to bring window to front
+		
+		// Force window to front using Windows API (on Windows)
+		// Use a small delay to ensure window is created before forcing to front
+		go func() {
+			// Try multiple times with delays to ensure window is found
+			for i := 0; i < 5; i++ {
+				time.Sleep(200 * time.Millisecond * time.Duration(i+1))
+				if logFile != nil {
+					fmt.Fprintf(logFile, "Attempt %d: Forcing window to front using Windows API...\n", i+1)
+					logFile.Sync()
+				}
+				if ForceWindowToFront("PS1 Script Manager") {
+					if logFile != nil {
+						fmt.Fprintf(logFile, "Window found and forced to front successfully.\n")
+						logFile.Sync()
+					}
+					break
+				}
+			}
+		}()
 	}()
 	
 	if logFile != nil {
 		fmt.Fprintf(logFile, "Application ready. Entering event loop...\n")
+		fmt.Fprintf(logFile, "Window should be visible now.\n")
+		fmt.Fprintf(logFile, "If window is not visible, try:\n")
+		fmt.Fprintf(logFile, "  1. Press Alt+Tab to switch to the window\n")
+		fmt.Fprintf(logFile, "  2. Check taskbar for the application\n")
+		fmt.Fprintf(logFile, "  3. Verify Desktop Experience is installed on Windows Server\n")
 		logFile.Sync()
 	}
 	
