@@ -55,7 +55,6 @@ nunit-*.xml
 .cursor
 
 # Go build artifacts
-ps1-gui-manager
 ps1-gui-manager.exe
 ps1-gui-manager-*.exe
 *.exe
