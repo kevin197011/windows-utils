@@ -12,4 +12,6 @@ task default: %w[push]
 
 task :push do
   Rake::Task['git:auto_commit_push'].invoke
+  system "git tag v#{Date.today.strftime('%Y%m%d')}"
+  system "git push origin v#{Date.today.strftime('%Y%m%d')}"
 end

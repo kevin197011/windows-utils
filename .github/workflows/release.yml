@@ -1,0 +1,88 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-windows:
+    name: Build Windows x86/x64
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Get dependencies
+        run: go mod download
+
+      - name: Build Windows x86 binary
+        run: |
+          GOOS=windows GOARCH=386 go build -ldflags="-s -w" -o ps1-gui-manager-x86.exe ./cmd/ps1-gui-manager
+
+      - name: Build Windows x64 binary
+        run: |
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ps1-gui-manager-x64.exe ./cmd/ps1-gui-manager
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_tag=true" >> $GITHUB_OUTPUT
+          else
+            VERSION="dev-$(date +%Y%m%d-%H%M%S)"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "tag=dev-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "is_tag=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        if: steps.get_version.outputs.is_tag == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## PS1 GUI Manager ${{ steps.get_version.outputs.version }}
+            
+            ### Changes
+            - Built from commit ${{ github.sha }}
+            
+            ### Downloads
+            - **Windows x86 (32-bit)**: `ps1-gui-manager-x86.exe`
+            - **Windows x64 (64-bit)**: `ps1-gui-manager-x64.exe`
+            
+            ### Usage
+            1. Download the appropriate binary for your system
+            2. Run the executable
+            3. Select a script from the list and click Execute
+            
+            ### Installation
+            Simply download the executable and run it. No additional dependencies required.
+          files: |
+            ps1-gui-manager-x86.exe
+            ps1-gui-manager-x64.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts (manual build)
+        if: steps.get_version.outputs.is_tag != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps1-gui-manager-binaries
+          path: |
+            ps1-gui-manager-x86.exe
+            ps1-gui-manager-x64.exe
+          retention-days: 30
