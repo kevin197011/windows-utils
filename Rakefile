@@ -13,6 +13,9 @@ task default: %w[push]
 
 task :push do
   Rake::Task['git:auto_commit_push'].invoke
-  system "git tag v#{Date.today.strftime('%Y%m%d')}"
-  system "git push origin v#{Date.today.strftime('%Y%m%d')}"
+  # 如果当天的tag生成过了就删除掉再生成
+  system "git tag -d v#{Date.today.strftime('%Y%m%d')}"
+  system "git push origin :refs/tags/v#{Date.today.strftime('%Y%m%d')}"
+  # system "git tag v#{Date.today.strftime('%Y%m%d')}"
+  # system "git push origin v#{Date.today.strftime('%Y%m%d')}"
 end
