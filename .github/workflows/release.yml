@@ -25,17 +25,26 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Install MinGW cross-compiler
+      - name: Install MinGW cross-compiler and Xvfb
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64
+          sudo apt-get install -y gcc-mingw-w64-x86-64 xvfb
+
+      - name: Start virtual display
+        run: |
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
 
       - name: Get dependencies
         run: go mod download
 
       - name: Build Windows x64 binary
         run: |
-          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -ldflags="-s -w" -o ps1-gui-manager-x64.exe ./cmd/ps1-gui-manager
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+          go build -ldflags="-s -w -H=windowsgui" \
+          -o ps1-gui-manager-x64.exe ./cmd/ps1-gui-manager
+        env:
+          DISPLAY: :99
 
       - name: Get version from tag
         id: get_version
