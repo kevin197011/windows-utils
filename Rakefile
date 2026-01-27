@@ -6,6 +6,7 @@
 # https://opensource.org/licenses/MIT
 
 require 'bundler/setup'
+require 'date'
 require 'kk/git/rake_tasks'
 
 task default: %w[push]
