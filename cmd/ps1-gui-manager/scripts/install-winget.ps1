@@ -12,9 +12,9 @@ $ErrorActionPreference = 'Stop'
 # .\install-winget.ps1
 
 # Remote exec:
-# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/scripts/install-winget.ps1').Content"
+# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/cmd/ps1-gui-manager/scripts/install-winget.ps1').Content"
 # Or shorter:
-# irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/scripts/install-winget.ps1 | iex
+# irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/cmd/ps1-gui-manager/scripts/install-winget.ps1 | iex
 
 # vars
 

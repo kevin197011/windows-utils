@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-windows:
-    name: Build Windows x86/x64
+    name: Build Windows x64
     runs-on: ubuntu-latest
     
     steps:
@@ -20,16 +20,17 @@ jobs:
         with:
           go-version: '1.21'
 
+      - name: Install MinGW cross-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64
+
       - name: Get dependencies
         run: go mod download
 
-      - name: Build Windows x86 binary
-        run: |
-          GOOS=windows GOARCH=386 go build -ldflags="-s -w" -o ps1-gui-manager-x86.exe ./cmd/ps1-gui-manager
-
       - name: Build Windows x64 binary
         run: |
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ps1-gui-manager-x64.exe ./cmd/ps1-gui-manager
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc go build -ldflags="-s -w" -o ps1-gui-manager-x64.exe ./cmd/ps1-gui-manager
 
       - name: Get version from tag
         id: get_version
@@ -59,7 +60,6 @@ jobs:
             - Built from commit ${{ github.sha }}
             
             ### Downloads
-            - **Windows x86 (32-bit)**: `ps1-gui-manager-x86.exe`
             - **Windows x64 (64-bit)**: `ps1-gui-manager-x64.exe`
             
             ### Usage
@@ -70,7 +70,6 @@ jobs:
             ### Installation
             Simply download the executable and run it. No additional dependencies required.
           files: |
-            ps1-gui-manager-x86.exe
             ps1-gui-manager-x64.exe
           draft: false
           prerelease: false
@@ -81,8 +80,7 @@ jobs:
         if: steps.get_version.outputs.is_tag != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ps1-gui-manager-binaries
+          name: ps1-gui-manager-x64
           path: |
-            ps1-gui-manager-x86.exe
             ps1-gui-manager-x64.exe
           retention-days: 30
