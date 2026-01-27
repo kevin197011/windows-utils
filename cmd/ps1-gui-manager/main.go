@@ -31,8 +31,11 @@ type Script struct {
 
 func main() {
 	myApp := app.NewWithID("com.windows-utils.ps1-gui-manager")
+	// Apply geek theme
+	myApp.Settings().SetTheme(&GeekTheme{})
+	
 	myWindow := myApp.NewWindow("PS1 Script Manager")
-	myWindow.Resize(fyne.NewSize(800, 600))
+	myWindow.Resize(fyne.NewSize(900, 700))
 
 	// Load scripts from embedded resources
 	scripts, err := loadScripts()
@@ -46,13 +49,15 @@ func main() {
 		return
 	}
 
-	// Create UI components
+	// Create UI components with monospace font for geek style
 	scriptList := widget.NewList(
 		func() int {
 			return len(scripts)
 		},
 		func() fyne.CanvasObject {
-			return widget.NewLabel("")
+			label := widget.NewLabel("")
+			label.TextStyle = fyne.TextStyle{Monospace: true}
+			return label
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
 			label := obj.(*widget.Label)
@@ -66,16 +71,19 @@ func main() {
 	var executeBtn *widget.Button
 	var logMutex sync.Mutex
 
-	// Create log output area
+	// Create log output area with monospace font for terminal feel
 	logOutput = widget.NewMultiLineEntry()
 	logOutput.SetText("Ready. Select a script and click Execute.\n")
 	logOutput.Disable() // Make read-only
+	logOutput.TextStyle = fyne.TextStyle{Monospace: true}
 
-	// Create status label
+	// Create status label with color coding
 	statusLabel = widget.NewLabel("Status: Ready")
+	statusLabel.Importance = widget.MediumImportance
 
 	// Create description label
 	descriptionLabel := widget.NewLabel("Select a script to see its description")
+	descriptionLabel.Wrapping = fyne.TextWrapWord
 
 	// Create execute button
 	executeBtn = widget.NewButton("Execute", func() {
@@ -86,7 +94,7 @@ func main() {
 
 		executeBtn.SetText("Executing...")
 		executeBtn.Disable()
-		statusLabel.SetText("Status: Executing...")
+		updateStatusLabel(statusLabel, "Executing...", "executing")
 		appendLog(myApp, logOutput, &logMutex, "\n--- Executing: "+selectedScript.Name+" ---\n")
 
 		// Execute script in goroutine to avoid blocking UI
@@ -98,10 +106,10 @@ func main() {
 				executeBtn.SetText("Execute")
 				executeBtn.Enable()
 				if err != nil {
-					statusLabel.SetText("Status: Error")
+					updateStatusLabel(statusLabel, "Error", "error")
 					appendLog(myApp, logOutput, &logMutex, "\nError: "+err.Error()+"\n")
 				} else {
-					statusLabel.SetText("Status: Completed")
+					updateStatusLabel(statusLabel, "Completed", "success")
 					appendLog(myApp, logOutput, &logMutex, "\n--- Execution completed ---\n")
 				}
 			})
@@ -129,22 +137,28 @@ func main() {
 		descriptionLabel.SetText("Description: " + desc)
 	}
 
-	// Layout
+	// Layout with improved spacing
+	scriptHeader := widget.NewLabel("Available Scripts:")
+	scriptHeader.TextStyle = fyne.TextStyle{Bold: true}
+	
 	leftPanel := container.NewBorder(
-		widget.NewLabel("Available Scripts:"),
+		scriptHeader,
 		nil,
 		nil,
 		nil,
 		scriptList,
 	)
 
+	logHeader := widget.NewLabel("Execution Log:")
+	logHeader.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	
 	rightPanel := container.NewVBox(
 		descriptionLabel,
 		widget.NewSeparator(),
 		statusLabel,
 		container.NewHBox(executeBtn, clearBtn),
 		widget.NewSeparator(),
-		widget.NewLabel("Execution Log:"),
+		logHeader,
 		container.NewScroll(logOutput),
 	)
 
@@ -314,6 +328,23 @@ func findPowerShell() (string, error) {
 	}
 
 	return "", fmt.Errorf("PowerShell executable not found")
+}
+
+func updateStatusLabel(label *widget.Label, status string, statusType string) {
+	label.SetText("Status: " + status)
+	
+	// Color code status based on type
+	switch statusType {
+	case "success":
+		label.Importance = widget.SuccessImportance
+	case "error":
+		label.Importance = widget.DangerImportance
+	case "executing":
+		label.Importance = widget.WarningImportance
+	default:
+		label.Importance = widget.MediumImportance
+	}
+	label.Refresh()
 }
 
 func showError(window fyne.Window, message string) {

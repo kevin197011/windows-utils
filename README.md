@@ -13,6 +13,7 @@ A graphical user interface tool for managing and executing PowerShell scripts.
 - **Real-time Log Display**: Shows script execution output in real-time with scrollable log area
 - **Self-contained**: All scripts are embedded in the executable - no external files needed
 - **Error Handling**: Graceful error handling with clear user feedback
+- **Geek-style UI**: Dark theme with terminal-inspired design, monospace fonts, and color-coded status indicators
 
 ### Building
 
