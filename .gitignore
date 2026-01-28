@@ -54,7 +54,7 @@ TestResult.xml
 nunit-*.xml
 .cursor
 
-# Go build artifacts
-ps1-gui-manager.exe
-ps1-gui-manager-*.exe
+# .NET build artifacts
 *.exe
+!**/bin/**/*.exe
+!**/obj/**/*.exe

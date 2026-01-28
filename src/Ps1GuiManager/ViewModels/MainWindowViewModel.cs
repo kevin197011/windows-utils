@@ -15,9 +15,9 @@ public class MainWindowViewModel : ViewModelBase
     private readonly ScriptLoader _scriptLoader;
     private readonly PowerShellExecutor _executor;
     private Script? _selectedScript;
-    private string _statusText = "Status: Ready";
+    private string _statusText = "Status: Ready - Select a script to execute";
     private string _descriptionText = "Select a script to see its description";
-    private string _logText = "Ready. Select a script and click Execute.\n";
+    private string _logText = "Ready. Select a script and click Execute.\nYou can execute multiple scripts in sequence.\n";
     private bool _isExecuting;
     private CancellationTokenSource? _cancellationTokenSource;
 
@@ -34,6 +34,12 @@ public class MainWindowViewModel : ViewModelBase
                 DescriptionText = string.IsNullOrWhiteSpace(value.Description) 
                     ? "No description available" 
                     : $"Description: {value.Description}";
+                
+                // Update status when selecting a new script (if not executing)
+                if (!IsExecuting)
+                {
+                    StatusText = $"Status: Ready - {value.Name} selected";
+                }
             }
         }
     }
@@ -105,8 +111,10 @@ public class MainWindowViewModel : ViewModelBase
         if (SelectedScript == null || IsExecuting) return;
 
         IsExecuting = true;
-        StatusText = "Status: Executing...";
-        AppendLog($"\n--- Executing: {SelectedScript.Name} ---\n");
+        StatusText = $"Status: Executing {SelectedScript.Name}...";
+        AppendLog($"\n{'='.PadRight(60, '=')}\n");
+        AppendLog($"Executing: {SelectedScript.Name}\n");
+        AppendLog($"{'='.PadRight(60, '=')}\n");
 
         _cancellationTokenSource?.Dispose();
         _cancellationTokenSource = new CancellationTokenSource();
@@ -119,23 +127,34 @@ public class MainWindowViewModel : ViewModelBase
 
             if (exitCode == 0)
             {
-                StatusText = "Status: Completed";
-                AppendLog("\n--- Execution completed ---\n");
+                StatusText = "Status: Completed - Ready for next script";
+                AppendLog($"\n{'='.PadRight(60, '=')}\n");
+                AppendLog("✓ Execution completed successfully\n");
+                AppendLog($"{'='.PadRight(60, '=')}\n");
+                AppendLog("Ready to execute another script. Select a script and click Execute.\n\n");
             }
             else
             {
-                StatusText = "Status: Error";
-                AppendLog($"\n--- Execution failed with exit code: {exitCode} ---\n");
+                StatusText = "Status: Error - Ready for next script";
+                AppendLog($"\n{'='.PadRight(60, '=')}\n");
+                AppendLog($"✗ Execution failed with exit code: {exitCode}\n");
+                AppendLog($"{'='.PadRight(60, '=')}\n");
+                AppendLog("You can try another script or re-execute this one.\n\n");
             }
         }
         catch (Exception ex)
         {
-            StatusText = "Status: Error";
-            AppendLog($"\nError: {ex.Message}\n");
+            StatusText = "Status: Error - Ready for next script";
+            AppendLog($"\n{'='.PadRight(60, '=')}\n");
+            AppendLog($"✗ Error: {ex.Message}\n");
+            AppendLog($"{'='.PadRight(60, '=')}\n");
+            AppendLog("You can try another script or re-execute this one.\n\n");
         }
         finally
         {
             IsExecuting = false;
+            // Ensure the execute button is re-enabled
+            this.RaisePropertyChanged(nameof(ExecuteButtonText));
         }
     }
 

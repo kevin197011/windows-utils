@@ -56,7 +56,7 @@ make clean
 
 ### Usage
 
-1. Launch the application: `./ps1-gui-manager` (or `ps1-gui-manager.exe` on Windows)
+1. Launch the application: `Ps1GuiManager.exe` (or run from the publish directory)
 2. Select a script from the list on the left
 3. View the script description (if available)
 4. Click "Execute" to run the selected script
@@ -67,16 +67,15 @@ make clean
 
 If the application doesn't start or show a window on Windows Server:
 
-1. **Check the log file**: The application creates `ps1-gui-manager.log` in the current directory with startup information
-2. **Desktop Experience required**: Windows Server needs "Desktop Experience" feature installed to run GUI applications
-3. **Server Core not supported**: Full installation mode is required (not Server Core)
-4. **See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for detailed troubleshooting steps**
+1. **Desktop Experience required**: Windows Server needs "Desktop Experience" feature installed to run GUI applications
+2. **Server Core not supported**: Full installation mode is required (not Server Core)
+3. **.NET Runtime**: Ensure .NET 8 runtime is installed (or use self-contained build)
 
 ### Script Organization
 
-Scripts are stored in the `scripts/` directory and automatically embedded into the binary during compilation. To add new scripts:
+Scripts are stored in the `src/Ps1GuiManager/Scripts/` directory and automatically embedded into the binary during compilation. To add new scripts:
 
-1. Add your `.ps1` file to the `scripts/` directory
+1. Add your `.ps1` file to the `src/Ps1GuiManager/Scripts/` directory
 2. Rebuild the application
 3. The new script will appear in the GUI automatically
 
@@ -113,12 +112,12 @@ Installs the latest version of winget (Windows Package Manager) from GitHub rele
 
 **Usage:**
 ```powershell
-.\scripts\install-winget.ps1
+.\src\Ps1GuiManager\Scripts\install-winget.ps1
 ```
 
 Or via remote execution:
 ```powershell
-irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/scripts/install-winget.ps1 | iex
+irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/src/Ps1GuiManager/Scripts/install-winget.ps1 | iex
 ```
 
 ## License

@@ -12,11 +12,11 @@ $ErrorActionPreference = 'Stop'
 # .\install-winget.ps1
 
 # Remote exec:
-# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/cmd/ps1-gui-manager/scripts/install-winget.ps1').Content"
+# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/src/Ps1GuiManager/Scripts/install-winget.ps1').Content"
 # Or shorter:
-# irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/cmd/ps1-gui-manager/scripts/install-winget.ps1 | iex
+# irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/src/Ps1GuiManager/Scripts/install-winget.ps1 | iex
 
-# Description: Install winget (Windows Package Manager) from GitHub releases
+# Description: Install or upgrade winget (Windows Package Manager) from GitHub releases
 
 class WingetInstaller {
     [string] $DownloadUrl
@@ -46,9 +46,20 @@ class WingetInstaller {
     }
 
     [void] Install() {
-        Write-Host "Installing winget..."
-        Add-AppxPackage -Path $this.InstallerPath
-        Write-Host "winget installed successfully!"
+        Write-Host "Installing/Upgrading winget..."
+        
+        # Check if winget is already installed
+        $existingWinget = Get-AppxPackage -Name "Microsoft.DesktopAppInstaller" -ErrorAction SilentlyContinue
+        if ($existingWinget) {
+            Write-Host "Found existing winget installation. Upgrading..."
+        } else {
+            Write-Host "Installing winget for the first time..."
+        }
+        
+        # Install or upgrade with force update to allow overwriting existing installation
+        Add-AppxPackage -Path $this.InstallerPath -ForceApplicationShutdown -ForceUpdateFromAnyVersion
+        
+        Write-Host "winget installed/upgraded successfully!"
     }
 
     [void] Cleanup() {
