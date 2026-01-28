@@ -14,10 +14,8 @@ task default: %w[push]
 task :push do
   Rake::Task['git:auto_commit_push'].invoke
   # if the tag for today already exists, delete it first
-  if system("git tag -l v#{Date.today.strftime('%Y%m%d')}")
-    system "git tag -d v#{Date.today.strftime('%Y%m%d')}"
-    system "git push origin :refs/tags/v#{Date.today.strftime('%Y%m%d')}"
-  end
+  system "git tag -d v#{Date.today.strftime('%Y%m%d')}"
+  system "git push origin :refs/tags/v#{Date.today.strftime('%Y%m%d')}"
   system "git tag v#{Date.today.strftime('%Y%m%d')}"
   system "git push origin v#{Date.today.strftime('%Y%m%d')}"
 end
