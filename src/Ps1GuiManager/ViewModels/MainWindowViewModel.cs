@@ -112,9 +112,9 @@ public class MainWindowViewModel : ViewModelBase
 
         IsExecuting = true;
         StatusText = $"Status: Executing {SelectedScript.Name}...";
-        AppendLog($"\n{'='.PadRight(60, '=')}\n");
+        AppendLog($"\n{new string('=', 60)}\n");
         AppendLog($"Executing: {SelectedScript.Name}\n");
-        AppendLog($"{'='.PadRight(60, '=')}\n");
+        AppendLog($"{new string('=', 60)}\n");
 
         _cancellationTokenSource?.Dispose();
         _cancellationTokenSource = new CancellationTokenSource();
@@ -128,26 +128,26 @@ public class MainWindowViewModel : ViewModelBase
             if (exitCode == 0)
             {
                 StatusText = "Status: Completed - Ready for next script";
-                AppendLog($"\n{'='.PadRight(60, '=')}\n");
+                AppendLog($"\n{new string('=', 60)}\n");
                 AppendLog("✓ Execution completed successfully\n");
-                AppendLog($"{'='.PadRight(60, '=')}\n");
+                AppendLog($"{new string('=', 60)}\n");
                 AppendLog("Ready to execute another script. Select a script and click Execute.\n\n");
             }
             else
             {
                 StatusText = "Status: Error - Ready for next script";
-                AppendLog($"\n{'='.PadRight(60, '=')}\n");
+                AppendLog($"\n{new string('=', 60)}\n");
                 AppendLog($"✗ Execution failed with exit code: {exitCode}\n");
-                AppendLog($"{'='.PadRight(60, '=')}\n");
+                AppendLog($"{new string('=', 60)}\n");
                 AppendLog("You can try another script or re-execute this one.\n\n");
             }
         }
         catch (Exception ex)
         {
             StatusText = "Status: Error - Ready for next script";
-            AppendLog($"\n{'='.PadRight(60, '=')}\n");
+            AppendLog($"\n{new string('=', 60)}\n");
             AppendLog($"✗ Error: {ex.Message}\n");
-            AppendLog($"{'='.PadRight(60, '=')}\n");
+            AppendLog($"{new string('=', 60)}\n");
             AppendLog("You can try another script or re-execute this one.\n\n");
         }
         finally
