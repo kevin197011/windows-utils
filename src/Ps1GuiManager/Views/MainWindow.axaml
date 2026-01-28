@@ -1,0 +1,145 @@
+<Window xmlns="https://github.com/avaloniaui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+       xmlns:vm="using:Ps1GuiManager.ViewModels"
+       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+       mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+       x:Class="Ps1GuiManager.Views.MainWindow"
+       x:DataType="vm:MainWindowViewModel"
+       Title="PS1 Script Manager"
+       Width="900" Height="700"
+       WindowStartupLocation="CenterScreen"
+       Background="#0d1117"
+       MinWidth="800" MinHeight="600"
+       ShowInTaskbar="True">
+  
+  <Design.DataContext>
+    <vm:MainWindowViewModel/>
+  </Design.DataContext>
+
+  <Grid ColumnDefinitions="300,*" RowDefinitions="Auto,*">
+    <!-- Left Panel: Script List -->
+    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2" 
+            Background="#1e1e1e" BorderBrush="#393939" BorderThickness="0,0,1,0">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" 
+                   Text="Available Scripts:" 
+                   FontWeight="Bold" 
+                   Foreground="#e6e6e6"
+                   Margin="10,10,10,5"/>
+        <ListBox Grid.Row="1" 
+                 ItemsSource="{Binding Scripts}"
+                 SelectedItem="{Binding SelectedScript}"
+                 Background="#1e1e1e"
+                 Foreground="#e6e6e6"
+                 SelectionMode="Single">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Name}" 
+                         FontFamily="Consolas, 'Courier New', monospace"
+                         Foreground="#e6e6e6"
+                         Margin="5"/>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem:selected">
+              <Setter Property="Background" Value="#00ffff30"/>
+            </Style>
+            <Style Selector="ListBoxItem:pointerover">
+              <Setter Property="Background" Value="#00ffff20"/>
+            </Style>
+          </ListBox.Styles>
+        </ListBox>
+      </Grid>
+    </Border>
+
+    <!-- Right Panel: Details and Log -->
+    <Grid Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Margin="10">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <!-- Description -->
+      <TextBlock Grid.Row="0" 
+                 Text="{Binding DescriptionText}"
+                 TextWrapping="Wrap"
+                 Foreground="#e6e6e6"
+                 Margin="0,0,0,10"/>
+
+      <!-- Separator -->
+      <Separator Grid.Row="1" Background="#393939" Margin="0,0,0,10"/>
+
+      <!-- Status and Buttons -->
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+        <TextBlock Grid.Column="0" 
+                   Text="{Binding StatusText}"
+                   Foreground="#e6e6e6"
+                   VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+          <Button Content="{Binding ExecuteButtonText}" 
+                  Command="{Binding ExecuteCommand}"
+                  IsEnabled="{Binding !IsExecuting}"
+                  Background="#1e1e1e"
+                  Foreground="#39ff14"
+                  BorderBrush="#39ff14"
+                  BorderThickness="1"
+                  Padding="15,5"
+                  Cursor="Hand">
+            <Button.Styles>
+              <Style Selector="Button:pointerover">
+                <Setter Property="Background" Value="#39ff1420"/>
+              </Style>
+            </Button.Styles>
+          </Button>
+          <Button Content="Clear Log" 
+                  Command="{Binding ClearLogCommand}"
+                  Background="#1e1e1e"
+                  Foreground="#e6e6e6"
+                  BorderBrush="#393939"
+                  BorderThickness="1"
+                  Padding="15,5"
+                  Cursor="Hand">
+            <Button.Styles>
+              <Style Selector="Button:pointerover">
+                <Setter Property="Background" Value="#00ffff20"/>
+              </Style>
+            </Button.Styles>
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- Separator -->
+      <Separator Grid.Row="3" Background="#393939" Margin="0,0,0,10"/>
+
+      <!-- Log Header -->
+      <TextBlock Grid.Row="4" 
+                 Text="Execution Log:"
+                 FontWeight="Bold"
+                 FontFamily="Consolas, 'Courier New', monospace"
+                 Foreground="#e6e6e6"
+                 Margin="0,0,0,5"/>
+
+      <!-- Log Output -->
+      <ScrollViewer Grid.Row="5" 
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Auto">
+        <TextBox Text="{Binding LogText}"
+                 IsReadOnly="True"
+                 Background="#1e1e1e"
+                 Foreground="#e6e6e6"
+                 FontFamily="Consolas, 'Courier New', monospace"
+                 FontSize="12"
+                 AcceptsReturn="True"
+                 AcceptsTab="False"
+                 TextWrapping="Wrap"
+                 BorderThickness="1"
+                 BorderBrush="#393939"/>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</Window>

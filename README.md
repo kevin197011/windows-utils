@@ -19,33 +19,39 @@ A graphical user interface tool for managing and executing PowerShell scripts.
 
 #### Prerequisites
 
-- Go 1.16 or higher
-- Fyne GUI framework (automatically installed via `go mod`)
+- .NET 8 SDK or later
+- Windows (for building Windows executable)
 
 #### Build Commands
 
 ```bash
-# Build for current platform
-make build
+# Restore NuGet packages
+dotnet restore src/Ps1GuiManager/Ps1GuiManager.csproj
 
-# Build for Windows (from any platform)
-make build-windows
+# Build
+dotnet build src/Ps1GuiManager/Ps1GuiManager.csproj --configuration Release
 
-# Run directly (development)
-make run
+# Publish self-contained executable
+dotnet publish src/Ps1GuiManager/Ps1GuiManager.csproj \
+  --configuration Release \
+  --runtime win-x64 \
+  --self-contained true \
+  -p:PublishSingleFile=true
 
-# Clean build artifacts
-make clean
+# Output: bin/Release/net8.0-windows/win-x64/publish/Ps1GuiManager.exe
 ```
 
-Or use Go directly:
+Or use Makefile:
 
 ```bash
 # Build
-go build -o ps1-gui-manager ./cmd/ps1-gui-manager
+make build
 
-# Run
-go run ./cmd/ps1-gui-manager
+# Build for Windows
+make build-windows
+
+# Clean
+make clean
 ```
 
 ### Usage

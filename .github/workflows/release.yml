@@ -20,31 +20,29 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for tags
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
         with:
-          go-version: '1.21'
+          dotnet-version: '8.0.x'
 
-      - name: Install MinGW cross-compiler and Xvfb
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64 xvfb
-
-      - name: Start virtual display
-        run: |
-          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-          echo "DISPLAY=:99" >> $GITHUB_ENV
-
-      - name: Get dependencies
-        run: go mod download
+      - name: Restore dependencies
+        run: dotnet restore src/Ps1GuiManager/Ps1GuiManager.csproj
 
       - name: Build Windows x64 binary
         run: |
-          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
-          go build -ldflags="-s -w -H=windowsgui" \
-          -o ps1-gui-manager-x64.exe ./cmd/ps1-gui-manager
-        env:
-          DISPLAY: :99
+          dotnet publish src/Ps1GuiManager/Ps1GuiManager.csproj \
+            --configuration Release \
+            --runtime win-x64 \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            --output ./publish
+        working-directory: .
+
+      - name: Rename output
+        run: |
+          mv ./publish/Ps1GuiManager.exe ./ps1-gui-manager-x64.exe || mv ./publish/Ps1GuiManager ./ps1-gui-manager-x64.exe
 
       - name: Get version from tag
         id: get_version
