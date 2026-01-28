@@ -60,6 +60,37 @@ class WingetInstaller {
         Add-AppxPackage -Path $this.InstallerPath -ForceApplicationShutdown -ForceUpdateFromAnyVersion
         
         Write-Host "winget installed/upgraded successfully!"
+        Write-Host "Refreshing environment variables..."
+        
+        # Refresh PATH environment variable for current session
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        
+        # Wait a moment for the installation to complete
+        Start-Sleep -Seconds 2
+        
+        # Verify installation
+        Write-Host "Verifying winget installation..."
+        $wingetPath = "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe"
+        if (Test-Path $wingetPath) {
+            Write-Host "✓ winget is available at: $wingetPath"
+        } else {
+            Write-Host "⚠ winget executable not found at expected path, but package is installed."
+            Write-Host "  You may need to restart PowerShell or the application for winget to be available."
+        }
+        
+        # Try to get winget version
+        try {
+            $wingetVersion = & winget --version 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✓ winget is working! Version: $wingetVersion"
+            } else {
+                Write-Host "⚠ winget command is not yet available in this session."
+                Write-Host "  Please restart the application or open a new PowerShell window to use winget."
+            }
+        } catch {
+            Write-Host "⚠ winget command is not yet available in this session."
+            Write-Host "  Please restart the application or open a new PowerShell window to use winget."
+        }
     }
 
     [void] Cleanup() {
