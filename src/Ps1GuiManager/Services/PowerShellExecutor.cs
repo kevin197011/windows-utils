@@ -97,7 +97,16 @@ public class PowerShellExecutor
                     if (!process.HasExited)
                     {
                         process.Kill();
-                        await process.WaitForExitAsync(TimeSpan.FromSeconds(2));
+                        // Wait a bit for the process to exit after kill
+                        using var killCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                        try
+                        {
+                            await process.WaitForExitAsync(killCts.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Process didn't exit in time, that's okay
+                        }
                     }
                 }
                 catch
