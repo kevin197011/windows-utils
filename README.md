@@ -9,8 +9,8 @@ A graphical user interface tool for managing and executing PowerShell scripts.
 ### Download
 
 Pre-built Windows executable (64-bit):
-- **Direct Download**: [ps1-gui-manager-x64.exe](https://github.com/kevin197011/windows-utils/releases/download/untagged-0c66c1c7808e7adb53d5/ps1-gui-manager-x64.exe)
-- **Latest Releases**: Check [GitHub Releases](https://github.com/kevin197011/windows-utils/releases) for the latest version
+- **Direct Download (Latest)**: [ps1-gui-manager-x64.exe](https://github.com/kevin197011/windows-utils/releases/latest/download/ps1-gui-manager-x64.exe)
+- **All Releases**: Check [GitHub Releases](https://github.com/kevin197011/windows-utils/releases) for all versions
 
 The executable is self-contained and requires no additional dependencies. Simply download and run.
 
