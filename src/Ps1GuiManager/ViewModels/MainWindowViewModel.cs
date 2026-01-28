@@ -131,7 +131,8 @@ public class MainWindowViewModel : ViewModelBase
                 AppendLog($"\n{new string('=', 60)}\n");
                 AppendLog("✓ Execution completed successfully\n");
                 AppendLog($"{new string('=', 60)}\n");
-                AppendLog("Ready to execute another script. Select a script and click Execute.\n\n");
+                AppendLog("Ready to execute another script. Select a script and click Execute.\n");
+                AppendLog("The application will continue running. You can install more tools.\n\n");
             }
             else
             {
@@ -139,16 +140,29 @@ public class MainWindowViewModel : ViewModelBase
                 AppendLog($"\n{new string('=', 60)}\n");
                 AppendLog($"✗ Execution failed with exit code: {exitCode}\n");
                 AppendLog($"{new string('=', 60)}\n");
-                AppendLog("You can try another script or re-execute this one.\n\n");
+                AppendLog("You can try another script or re-execute this one.\n");
+                AppendLog("The application will continue running. You can select and execute other scripts.\n\n");
             }
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "Status: Cancelled - Ready for next script";
+            AppendLog($"\n{new string('=', 60)}\n");
+            AppendLog("⚠ Script execution was cancelled\n");
+            AppendLog($"{new string('=', 60)}\n");
+            AppendLog("You can select and execute another script.\n\n");
         }
         catch (Exception ex)
         {
             StatusText = "Status: Error - Ready for next script";
             AppendLog($"\n{new string('=', 60)}\n");
-            AppendLog($"✗ Error: {ex.Message}\n");
+            AppendLog($"✗ Error occurred: {ex.Message}\n");
+            if (ex.InnerException != null)
+            {
+                AppendLog($"  Inner exception: {ex.InnerException.Message}\n");
+            }
             AppendLog($"{new string('=', 60)}\n");
-            AppendLog("You can try another script or re-execute this one.\n\n");
+            AppendLog("The application will continue running. You can try another script or re-execute this one.\n\n");
         }
         finally
         {

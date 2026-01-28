@@ -32,6 +32,8 @@ public class PowerShellExecutor
             }
 
             // Create process start info
+            // Note: We use -NoExit flag is NOT used here because we want the script to complete
+            // The script execution will complete and return control to the GUI application
             var startInfo = new ProcessStartInfo
             {
                 FileName = powershellPath,
@@ -70,15 +72,43 @@ public class PowerShellExecutor
                 }
             };
 
+            process.Exited += (sender, e) =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    ExecutionCompleted?.Invoke(this, EventArgs.Empty);
+                });
+            };
+
             process.Start();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            // Wait for completion
-            await process.WaitForExitAsync(cancellationToken);
+            // Wait for completion - this will not throw on script errors, only on cancellation
+            try
+            {
+                await process.WaitForExitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Process was cancelled, try to kill it gracefully
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill();
+                        await process.WaitForExitAsync(TimeSpan.FromSeconds(2));
+                    }
+                }
+                catch
+                {
+                    // Ignore errors when killing process
+                }
+                throw;
+            }
             
-            ExecutionCompleted?.Invoke(this, EventArgs.Empty);
-            
+            // Return exit code - non-zero exit codes are expected for script errors
+            // and should not cause the application to exit
             return process.ExitCode;
         }
         finally
