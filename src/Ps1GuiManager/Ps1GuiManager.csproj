@@ -1,4 +1,4 @@
-<Project Sdk="Avalonia.Desktop">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
