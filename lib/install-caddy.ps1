@@ -118,24 +118,7 @@ class CaddyInstaller {
 }
 
 # Main execution
-try {
-    # Check for Admin privileges (needed for ProgramFiles and Registry/Path)
-    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if (-not $isAdmin) {
-        Write-Warning "This script requires Administrator privileges to write to Program Files and update System PATH."
-        Write-Warning "Please run as Administrator."
-        # We don't exit, we try anyway, maybe ACLs allow it, or catch block handles it.
-        # Actually safer to throw if we know we need it? 
-        # The other scripts don't explicitly check, but they use installers that usually prompt UAC.
-        # Here we are doing file operations directly.
-        # Let's verify if we should throw. User experience is better if we warn or throw.
-        # Given "windows-utils" context, users probably know.
-    }
-
-    $installer = [CaddyInstaller]::new()
-    $installer.Force = $Force
-    $installer.Run()
-} catch {
-    Write-Error $_.Exception.Message
-    exit 1
-}
+# Main execution
+$installer = [CaddyInstaller]::new()
+$installer.Force = $Force
+$installer.Run()
