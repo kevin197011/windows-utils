@@ -30,23 +30,33 @@ class WingetInstaller {
     }
 
     [void] GetDownloadUrls() {
-        Write-Host "Fetching latest winget release..."
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
+        # Use v1.11.x (last version before Windows App Runtime 1.8 dependency) to avoid 0x80073CF3 on older systems.
+        # v1.12+ requires Microsoft.WindowsAppRuntime.1.8 which often fails to install via script.
+        $tagsToTry = @("v1.11.510", "v1.11.400")
+        $release = $null
+        foreach ($tag in $tagsToTry) {
+            try {
+                Write-Host "Fetching winget release $tag (no Windows App Runtime 1.8 dependency)..."
+                $release = Invoke-RestMethod -Uri "https://api.github.com/repos/microsoft/winget-cli/releases/tags/$tag"
+                break
+            } catch {
+                Write-Host "  $tag not found, trying next..."
+            }
+        }
+        if (-not $release) {
+            Write-Host "Fallback: using latest release (may require Windows App Runtime 1.8)..."
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
+        }
         
         $this.DownloadUrl = $release.assets | Where-Object { $_.name -like "*.msixbundle" } | Select-Object -ExpandProperty browser_download_url -First 1
         if (-not $this.DownloadUrl) {
             throw "Failed to find winget installer (.msixbundle) in release"
         }
-        
-        # Dependencies zip (contains Microsoft.WindowsAppRuntime.1.8 and other frameworks)
+        $this.DependenciesZipUrl = $null
         $depAsset = $release.assets | Where-Object { $_.name -like "*Dependencies*.zip" } | Select-Object -First 1
         if ($depAsset) {
             $this.DependenciesZipUrl = $depAsset.browser_download_url
             Write-Host "Found dependencies: $($depAsset.name)"
-        } else {
-            # Fallback: official permalink for latest dependencies
-            $this.DependenciesZipUrl = "https://github.com/microsoft/winget-cli/releases/latest/download/DesktopAppInstaller_Dependencies.zip"
-            Write-Host "Using dependencies from: DesktopAppInstaller_Dependencies.zip"
         }
         Write-Host "Winget bundle: $($this.DownloadUrl)"
     }
@@ -54,13 +64,15 @@ class WingetInstaller {
     [void] DownloadInstaller() {
         Write-Host "Downloading winget installer..."
         Invoke-WebRequest -Uri $this.DownloadUrl -OutFile $this.InstallerPath -UseBasicParsing
-        Write-Host "Downloading winget dependencies (Windows App Runtime 1.8, etc.)..."
-        Invoke-WebRequest -Uri $this.DependenciesZipUrl -OutFile $this.DependenciesZipPath -UseBasicParsing
-        Write-Host "Extracting dependencies..."
-        if (Test-Path $this.DependenciesExtractPath) {
-            Remove-Item -Path $this.DependenciesExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+        if ($this.DependenciesZipUrl) {
+            Write-Host "Downloading winget dependencies..."
+            Invoke-WebRequest -Uri $this.DependenciesZipUrl -OutFile $this.DependenciesZipPath -UseBasicParsing
+            Write-Host "Extracting dependencies..."
+            if (Test-Path $this.DependenciesExtractPath) {
+                Remove-Item -Path $this.DependenciesExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            Expand-Archive -Path $this.DependenciesZipPath -DestinationPath $this.DependenciesExtractPath -Force
         }
-        Expand-Archive -Path $this.DependenciesZipPath -DestinationPath $this.DependenciesExtractPath -Force
     }
 
     [string[]] GetDependencyPaths() {
@@ -79,12 +91,15 @@ class WingetInstaller {
             Write-Host "Installing winget for the first time..."
         }
         
-        $depPaths = $this.GetDependencyPaths()
+        $depPaths = @()
+        if ($this.DependenciesZipUrl -and (Test-Path $this.DependenciesExtractPath)) {
+            $depPaths = $this.GetDependencyPaths()
+        }
         if ($depPaths.Count -gt 0) {
-            Write-Host "Installing $($depPaths.Count) dependency package(s) with winget..."
+            Write-Host "Installing winget with $($depPaths.Count) dependency package(s)..."
             Add-AppxPackage -Path $this.InstallerPath -DependencyPath $depPaths -ForceApplicationShutdown -ForceUpdateFromAnyVersion
         } else {
-            Write-Host "No dependency packages found in zip; attempting direct install..."
+            Write-Host "Installing winget (no extra dependencies needed for this version)..."
             Add-AppxPackage -Path $this.InstallerPath -ForceApplicationShutdown -ForceUpdateFromAnyVersion
         }
         
