@@ -17,7 +17,20 @@ $ErrorActionPreference = 'Stop'
 
 # Description: Install OBS Studio from official installer
 
-classstring] $InstallDir = "$env:ProgramFiles\obs-studio"
+# Parse arguments manually for irm | iex support
+$Force = $false
+if ($args -contains "-Force" -or $args -contains "-force") {
+    $Force = $true
+}
+
+if ($env:FORCE_INSTALL -eq 'true') {
+    $Force = $true
+}
+
+class OBSInstaller {
+    [string] $DownloadUrl = "https://cdn-fastly.obsproject.com/downloads/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+    [string] $InstallerPath = "$env:TEMP\OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+    [string] $InstallDir = "$env:ProgramFiles\obs-studio"
     [int] $MaxRetries = 5
     [int] $RetryDelaySeconds = 10
     [bool] $Force = $false
@@ -27,10 +40,7 @@ classstring] $InstallDir = "$env:ProgramFiles\obs-studio"
             return $true
         }
         return $false
-    }s://cdn-fastly.obsproject.com/downloads/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
-    [string] $InstallerPath = "$env:TEMP\OBS-Studio-32.0.4-Windows-x64-Installer.exe"
-    [int] $MaxRetries = 5
-    [int] $RetryDelaySeconds = 10
+    }
 
     [void] Download() {
         Write-Host "Downloading OBS Studio installer..." -ForegroundColor Cyan
@@ -61,7 +71,8 @@ classstring] $InstallDir = "$env:ProgramFiles\obs-studio"
                 
                 if ($retryCount -ge $this.MaxRetries) {
                     throw "Failed to download OBS Studio after $($this.MaxRetries) attempts. Please check your internet connection and try again."
-         process = Start-Process -FilePath $this.InstallerPath -ArgumentList "/S", "/D=$($this.InstallDir)
+                }
+            }
         }
     }
 
@@ -69,8 +80,11 @@ classstring] $InstallDir = "$env:ProgramFiles\obs-studio"
         Write-Host "Installing OBS Studio (silent)..." -ForegroundColor Cyan
         # /S = silent mode
         # /D = installation directory (must be last parameter for NSIS)
-        $installDir = "$env:ProgramFiles\obs-studio"
-        $process = Start-Process -FilePath $this.InstallerPath -ArgumentList "/S", "/D=$installDir" -Wait -PassThru -NoNewWindow
+        # Note: /D must not contain quotes even if path has spaces, but PowerShell argument passing might be tricky.
+        # However, for Start-Process ArgumentList, we supply separated args.
+        # NSIS behavior for /D is special. It should be the last argument.
+        
+        $process = Start-Process -FilePath $this.InstallerPath -ArgumentList "/S", "/D=$($this.InstallDir)" -Wait -PassThru -NoNewWindow
         if ($process.ExitCode -ne 0) {
             throw "OBS Studio installer exited with code: $($process.ExitCode)"
         }
@@ -82,7 +96,6 @@ classstring] $InstallDir = "$env:ProgramFiles\obs-studio"
     }
 
     [void] Run() {
-        $this.Download()
         if ($this.IsInstalled() -and -not $this.Force) {
             Write-Host "OBS Studio is already installed at: $($this.InstallDir)" -ForegroundColor Green
             Write-Host "Skipping installation. Use -Force parameter to force reinstall." -ForegroundColor Yellow
@@ -93,6 +106,7 @@ classstring] $InstallDir = "$env:ProgramFiles\obs-studio"
             Write-Host "Force flag detected. Proceeding with reinstall..." -ForegroundColor Yellow
         }
         
+        $this.Download()
         try {
             $this.Install()
         } finally {
@@ -102,10 +116,6 @@ classstring] $InstallDir = "$env:ProgramFiles\obs-studio"
 }
 
 # Main execution
-param(
-    [switch]$Force
-)
-
 $installer = [OBSInstaller]::new()
 $installer.Force = $Force
 $installer.Run()

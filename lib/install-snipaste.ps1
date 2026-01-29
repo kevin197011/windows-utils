@@ -18,9 +18,11 @@ $ErrorActionPreference = 'Stop'
 # Description: Install or upgrade Snipaste from official portable zip (no winget).
 # Installs to %LOCALAPPDATA%\Snipaste (write-friendly; avoid Program Files per official docs).
 
-param(
-    [switch]$Force
-)
+# Parse arguments manually for irm | iex support
+$Force = $false
+if ($args -contains "-Force" -or $args -contains "-force") {
+    $Force = $true
+}
 
 if ($env:FORCE_INSTALL -eq 'true') {
     $Force = $true
