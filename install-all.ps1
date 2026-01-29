@@ -18,9 +18,11 @@ $ErrorActionPreference = 'Stop'
 
 # Description: Run all installation scripts from the manifest
 
-param(
-    [switch]$Force
-)
+# Parse arguments manually to support 'irm | iex' which fails with param() block
+$Force = $false
+if ($args -contains "-Force" -or $args -contains "-force") {
+    $Force = $true
+}
 
 # Check for environment variable (for remote execution with irm | iex)
 if ($env:FORCE_INSTALL -eq 'true') {
