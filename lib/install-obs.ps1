@@ -28,20 +28,47 @@ if ($env:FORCE_INSTALL -eq 'true') {
 }
 
 class OBSInstaller {
-    [string] $DownloadUrl = "https://cdn-fastly.obsproject.com/downloads/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
-    [string] $InstallerPath = "$env:TEMP\OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+    [string] $GitHubRepo = "obsproject/obs-studio"
     [string] $InstallDir = "$env:ProgramFiles\obs-studio"
+    [string] $Version
+    [string] $DownloadUrl
+    [string] $InstallerPath
     [bool] $Force = $false
 
+    [void] FetchLatestVersion() {
+        Write-Host "Fetching latest OBS Studio version from GitHub..." -ForegroundColor Cyan
+        $apiUrl = "https://api.github.com/repos/$($this.GitHubRepo)/releases/latest"
+        $ProgressPreference = 'SilentlyContinue'
+        try {
+            $response = Invoke-WebRequest -Uri $apiUrl -UseBasicParsing | ConvertFrom-Json
+            $this.Version = $response.tag_name.TrimStart('v')
+            
+            # Find the Windows x64 Installer in the assets
+            $asset = $response.assets | Where-Object { $_.name -like "OBS-Studio-*-Windows-x64-Installer.exe" } | Select-Object -First 1
+            if ($null -eq $asset) {
+                throw "Could not find Windows x64 installer in GitHub releases."
+            }
+            $this.DownloadUrl = $asset.browser_download_url
+            $this.InstallerPath = "$env:TEMP\$($asset.name)"
+            Write-Host "Latest version: $($this.Version)" -ForegroundColor Green
+        } catch {
+            Write-Host "Failed to fetch latest version from GitHub. Falling back to default URL." -ForegroundColor Yellow
+            $this.Version = "32.0.4"
+            $this.DownloadUrl = "https://cdn-fastly.obsproject.com/downloads/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+            $this.InstallerPath = "$env:TEMP\OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+        }
+    }
+
     [bool] IsInstalled() {
-        if (Test-Path -Path $this.InstallDir) {
+        $exePath = Join-Path $this.InstallDir "bin\64bit\obs64.exe"
+        if (Test-Path -Path $exePath) {
             return $true
         }
         return $false
     }
 
     [void] Download() {
-        Write-Host "Downloading OBS Studio installer..." -ForegroundColor Cyan
+        Write-Host "Downloading OBS Studio installer from $($this.DownloadUrl)..." -ForegroundColor Cyan
         $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -Uri $this.DownloadUrl `
             -OutFile $this.InstallerPath `
@@ -53,8 +80,7 @@ class OBSInstaller {
     [void] Install() {
         Write-Host "Installing OBS Studio (silent)..." -ForegroundColor Cyan
         # /S = silent mode
-        # /D = installation directory (must be last parameter for NSIS)
-        
+        # /D = installation directory (must be last parameter for NSIS and without quotes)
         $process = Start-Process -FilePath $this.InstallerPath -ArgumentList "/S", "/D=$($this.InstallDir)" -Wait -PassThru -NoNewWindow
         if ($process.ExitCode -ne 0) {
             throw "OBS Studio installer exited with code: $($process.ExitCode)"
@@ -63,10 +89,14 @@ class OBSInstaller {
     }
 
     [void] Cleanup() {
-        Remove-Item -Path $this.InstallerPath -Force -ErrorAction SilentlyContinue
+        if (Test-Path $this.InstallerPath) {
+            Remove-Item -Path $this.InstallerPath -Force -ErrorAction SilentlyContinue
+        }
     }
 
     [void] Run() {
+        $this.FetchLatestVersion()
+
         if ($this.IsInstalled() -and -not $this.Force) {
             Write-Host "OBS Studio is already installed at: $($this.InstallDir)" -ForegroundColor Green
             Write-Host "Skipping installation. Use -Force parameter to force reinstall." -ForegroundColor Yellow
