@@ -29,7 +29,10 @@ class ShareXInstaller {
 
     [void] Install() {
         Write-Host "Installing ShareX (silent)..." -ForegroundColor Cyan
-        $process = Start-Process -FilePath $this.InstallerPath -ArgumentList "/S" -Wait -PassThru -NoNewWindow
+        # /S = silent mode
+        # /D = installation directory (must be last parameter for NSIS)
+        $installDir = "$env:ProgramFiles\ShareX"
+        $process = Start-Process -FilePath $this.InstallerPath -ArgumentList "/S", "/D=$installDir" -Wait -PassThru -NoNewWindow
         if ($process.ExitCode -ne 0) {
             throw "ShareX installer exited with code: $($process.ExitCode)"
         }
