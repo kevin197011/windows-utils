@@ -7,21 +7,31 @@
 $ErrorActionPreference = 'Stop'
 
 # Usage:
-# powershell -ExecutionPolicy Bypass -File install-all.ps1
-# Or in PowerShell:
-# .\install-all.ps1
-
-# Remote exec:
-# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/install-all.ps1').Content"
-# Or shorter:
-# irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/install-all.ps1 | iex
+# Local execution:
+#   powershell -ExecutionPolicy Bypass -File install-all.ps1
+#   .\install-all.ps1
+#   .\install-all.ps1 -Force  (force reinstall all)
+#
+# Remote execution:
+#   irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/install-all.ps1 | iex
+#   $env:FORCE_INSTALL='true'; irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/install-all.ps1 | iex
 
 # Description: Run all installation scripts from the manifest
+
+param(
+    [switch]$Force
+)
+
+# Check for environment variable (for remote execution with irm | iex)
+if ($env:FORCE_INSTALL -eq 'true') {
+    $Force = $true
+}
 
 class ScriptRunner {
     [string] $BaseUrl = "https://raw.githubusercontent.com/kevin197011/windows-utils/main"
     [string] $ManifestUrl
     [array] $Scripts
+    [bool] $Force = $false
 
     ScriptRunner() {
         $this.ManifestUrl = "$($this.BaseUrl)/meta/lib-manifest.json"
@@ -38,7 +48,13 @@ class ScriptRunner {
         $url = "$($this.BaseUrl)/lib/$ScriptName"
         Write-Host "Running $ScriptName ..." -ForegroundColor Cyan
         try {
-            Invoke-Expression (Invoke-WebRequest -Uri $url -UseBasicParsing).Content
+            $scriptContent = (Invoke-WebRequest -Uri $url -UseBasicParsing).Content
+            if ($this.Force) {
+                Write-Host "  (Force mode enabled)" -ForegroundColor Yellow
+                Invoke-Expression "$scriptContent -Force"
+            } else {
+                Invoke-Expression $scriptContent
+            }
         } catch {
             Write-Host "Error running $ScriptName : $_" -ForegroundColor Red
             throw
@@ -56,4 +72,5 @@ class ScriptRunner {
 
 # Main execution
 $runner = [ScriptRunner]::new()
+$runner.Force = $Force
 $runner.RunAll()

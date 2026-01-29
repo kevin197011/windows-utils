@@ -8,18 +8,26 @@ $ErrorActionPreference = 'Stop'
 
 # Usage:
 # powershell -ExecutionPolicy Bypass -File install-obs.ps1
-# Or in PowerShell:
 # .\install-obs.ps1
-
+# .\install-obs.ps1 -Force  (force reinstall)
+#
 # Remote exec:
-# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-obs.ps1').Content"
-# Or shorter:
 # irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-obs.ps1 | iex
+# $env:FORCE_INSTALL='true'; irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-obs.ps1 | iex
 
 # Description: Install OBS Studio from official installer
 
-class OBSInstaller {
-    [string] $DownloadUrl = "https://cdn-fastly.obsproject.com/downloads/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+classstring] $InstallDir = "$env:ProgramFiles\obs-studio"
+    [int] $MaxRetries = 5
+    [int] $RetryDelaySeconds = 10
+    [bool] $Force = $false
+
+    [bool] IsInstalled() {
+        if (Test-Path -Path $this.InstallDir) {
+            return $true
+        }
+        return $false
+    }s://cdn-fastly.obsproject.com/downloads/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
     [string] $InstallerPath = "$env:TEMP\OBS-Studio-32.0.4-Windows-x64-Installer.exe"
     [int] $MaxRetries = 5
     [int] $RetryDelaySeconds = 10
@@ -53,8 +61,7 @@ class OBSInstaller {
                 
                 if ($retryCount -ge $this.MaxRetries) {
                     throw "Failed to download OBS Studio after $($this.MaxRetries) attempts. Please check your internet connection and try again."
-                }
-            }
+         process = Start-Process -FilePath $this.InstallerPath -ArgumentList "/S", "/D=$($this.InstallDir)
         }
     }
 
@@ -76,6 +83,16 @@ class OBSInstaller {
 
     [void] Run() {
         $this.Download()
+        if ($this.IsInstalled() -and -not $this.Force) {
+            Write-Host "OBS Studio is already installed at: $($this.InstallDir)" -ForegroundColor Green
+            Write-Host "Skipping installation. Use -Force parameter to force reinstall." -ForegroundColor Yellow
+            return
+        }
+        
+        if ($this.Force -and $this.IsInstalled()) {
+            Write-Host "Force flag detected. Proceeding with reinstall..." -ForegroundColor Yellow
+        }
+        
         try {
             $this.Install()
         } finally {
@@ -85,5 +102,10 @@ class OBSInstaller {
 }
 
 # Main execution
+param(
+    [switch]$Force
+)
+
 $installer = [OBSInstaller]::new()
+$installer.Force = $Force
 $installer.Run()

@@ -8,21 +8,37 @@ $ErrorActionPreference = 'Stop'
 
 # Usage:
 # powershell -ExecutionPolicy Bypass -File install-snipaste.ps1
-# Or in PowerShell:
 # .\install-snipaste.ps1
-
+# .\install-snipaste.ps1 -Force  (force reinstall)
+#
 # Remote exec:
-# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-snipaste.ps1').Content"
-# Or shorter:
 # irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-snipaste.ps1 | iex
+# $env:FORCE_INSTALL='true'; irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-snipaste.ps1 | iex
 
 # Description: Install or upgrade Snipaste from official portable zip (no winget).
 # Installs to %LOCALAPPDATA%\Snipaste (write-friendly; avoid Program Files per official docs).
+
+param(
+    [switch]$Force
+)
+
+if ($env:FORCE_INSTALL -eq 'true') {
+    $Force = $true
+}
 
 class SnipasteInstaller {
     [string] $ZipUrl = "https://dl.snipaste.com/win-x64"
     [string] $InstallDir = "$env:LOCALAPPDATA\Snipaste"
     [string] $ZipPath = "$env:TEMP\Snipaste-win-x64.zip"
+    [bool] $Force = $false
+
+    [bool] IsInstalled() {
+        $exePath = Join-Path $this.InstallDir "Snipaste.exe"
+        if (Test-Path -Path $exePath) {
+            return $true
+        }
+        return $false
+    }
 
     [void] Download() {
         Write-Host "Downloading Snipaste (portable)..." -ForegroundColor Cyan
@@ -75,6 +91,12 @@ class SnipasteInstaller {
     }
 
     [void] Run() {
+        if ($this.IsInstalled() -and -not $this.Force) {
+            Write-Host "Snipaste is already installed at: $($this.InstallDir)" -ForegroundColor Green
+            Write-Host "Skipping installation. Use -Force to force reinstall." -ForegroundColor Yellow
+            return
+        }
+        
         $this.Download()
         try {
             $this.Install()
@@ -86,4 +108,5 @@ class SnipasteInstaller {
 
 # Main execution
 $installer = [SnipasteInstaller]::new()
+$installer.Force = $Force
 $installer.Run()

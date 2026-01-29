@@ -8,19 +8,35 @@ $ErrorActionPreference = 'Stop'
 
 # Usage:
 # powershell -ExecutionPolicy Bypass -File install-chrome.ps1
-# Or in PowerShell:
 # .\install-chrome.ps1
-
+# .\install-chrome.ps1 -Force  (force reinstall)
+#
 # Remote exec:
-# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-chrome.ps1').Content"
-# Or shorter:
 # irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-chrome.ps1 | iex
+# $env:FORCE_INSTALL='true'; irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-chrome.ps1 | iex
 
 # Description: Install or upgrade Google Chrome from official installer (no winget)
+
+param(
+    [switch]$Force
+)
+
+if ($env:FORCE_INSTALL -eq 'true') {
+    $Force = $true
+}
 
 class ChromeInstaller {
     [string] $DownloadUrl = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
     [string] $InstallerPath = "$env:TEMP\chrome_installer.exe"
+    [string] $InstallDir = "$env:ProgramFiles\Google\Chrome\Application"
+    [bool] $Force = $false
+
+    [bool] IsInstalled() {
+        if (Test-Path -Path "$($this.InstallDir)\chrome.exe") {
+            return $true
+        }
+        return $false
+    }
 
     [void] Download() {
         Write-Host "Downloading Google Chrome installer..." -ForegroundColor Cyan
@@ -41,6 +57,12 @@ class ChromeInstaller {
     }
 
     [void] Run() {
+        if ($this.IsInstalled() -and -not $this.Force) {
+            Write-Host "Google Chrome is already installed." -ForegroundColor Green
+            Write-Host "Skipping installation. Use -Force to force reinstall." -ForegroundColor Yellow
+            return
+        }
+        
         $this.Download()
         try {
             $this.Install()
@@ -52,4 +74,5 @@ class ChromeInstaller {
 
 # Main execution
 $installer = [ChromeInstaller]::new()
+$installer.Force = $Force
 $installer.Run()

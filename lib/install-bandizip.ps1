@@ -8,20 +8,36 @@ $ErrorActionPreference = 'Stop'
 
 # Usage:
 # powershell -ExecutionPolicy Bypass -File install-bandizip.ps1
-# Or in PowerShell:
 # .\install-bandizip.ps1
-
+# .\install-bandizip.ps1 -Force  (force reinstall)
+#
 # Remote exec:
-# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-bandizip.ps1').Content"
-# Or shorter:
 # irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-bandizip.ps1 | iex
+# $env:FORCE_INSTALL='true'; irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-bandizip.ps1 | iex
 
 # Description: Install or upgrade Bandizip from official installer (no winget)
+
+param(
+    [switch]$Force
+)
+
+if ($env:FORCE_INSTALL -eq 'true') {
+    $Force = $true
+}
 
 class BandizipInstaller {
     # Official download (dl.php?std-all = Standard edition, all CPUs). Regional mirrors: std-all-us, std-all-eu, std-all-sg, etc.
     [string] $DownloadUrl = "https://www.bandisoft.com/bandizip/dl.php?all"
     [string] $InstallerPath = "$env:TEMP\Bandizip-Setup.exe"
+    [string] $InstallDir = "$env:ProgramFiles\Bandizip"
+    [bool] $Force = $false
+
+    [bool] IsInstalled() {
+        if (Test-Path -Path "$($this.InstallDir)\Bandizip.exe") {
+            return $true
+        }
+        return $false
+    }
 
     [void] Download() {
         Write-Host "Downloading Bandizip installer..." -ForegroundColor Cyan
@@ -43,6 +59,12 @@ class BandizipInstaller {
     }
 
     [void] Run() {
+        if ($this.IsInstalled() -and -not $this.Force) {
+            Write-Host "Bandizip is already installed." -ForegroundColor Green
+            Write-Host "Skipping installation. Use -Force to force reinstall." -ForegroundColor Yellow
+            return
+        }
+        
         $this.Download()
         try {
             $this.Install()
@@ -54,4 +76,5 @@ class BandizipInstaller {
 
 # Main execution
 $installer = [BandizipInstaller]::new()
+$installer.Force = $Force
 $installer.Run()
