@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 
 class BandizipInstaller {
     # Official download (dl.php?std-all = Standard edition, all CPUs). Regional mirrors: std-all-us, std-all-eu, std-all-sg, etc.
-    [string] $DownloadUrl = "https://www.bandisoft.com/bandizip/dl.php?std-all"
+    [string] $DownloadUrl = "https://www.bandisoft.com/bandizip/dl.php?all"
     [string] $InstallerPath = "$env:TEMP\Bandizip-Setup.exe"
 
     [void] Download() {
