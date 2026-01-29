@@ -1,27 +1,31 @@
 # windows-utils
 
-Windows utility scripts and tools.
+Windows utility scripts and tools: install scripts in `lib/`, run via one-liner.
 
-## PS1 Script Manager (GUI)
+## Scripts in `lib/`
 
-A graphical user interface tool for managing and executing PowerShell scripts.
+| Script | Description |
+|--------|-------------|
+| `install-winget.ps1` | Install or upgrade winget (Windows Package Manager) from GitHub release |
+| `install-chrome.ps1` | Install or upgrade Google Chrome from official installer |
+| `install-bandizip.ps1` | Install or upgrade Bandizip from official installer |
+| `install-snipaste.ps1` | Install or upgrade Snipaste (portable) to `%LOCALAPPDATA%\Snipaste` |
 
-### Download
+All scripts support remote execution: `irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/<script>.ps1 | iex`
 
-Pre-built Windows executable (64-bit):
-- **Direct Download (Latest)**: [ps1-gui-manager-x64.exe](https://github.com/kevin197011/windows-utils/releases/latest/download/ps1-gui-manager-x64.exe)
-- **All Releases**: Check [GitHub Releases](https://github.com/kevin197011/windows-utils/releases) for all versions
+## Install all (one-liner)
 
-The executable is self-contained and requires no additional dependencies. Simply download and run.
+Run every install script in order (winget → Chrome → Bandizip → Snipaste):
 
-### Usage
+```powershell
+irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/install-all.ps1 | iex
+```
 
-1. **Download** the executable from the link above
-2. **Run** `ps1-gui-manager-x64.exe` (double-click to launch)
-3. **Select** a script from the list on the left
-4. **Click** "Execute" to run the selected script
-5. **Monitor** execution progress in the log area
-6. **Continue** installing other scripts as needed (the application stays open)
+Run a single script, e.g. winget only:
+
+```powershell
+irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/lib/install-winget.ps1 | iex
+```
 
 ## License
 
