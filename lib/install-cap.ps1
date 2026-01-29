@@ -21,6 +21,22 @@ $ErrorActionPreference = 'Stop'
 class CapInstaller {
     [string] $DownloadUrl = "https://cap.so/download/windows"
     [string] $InstallerPath = "$env:TEMP\Cap-Setup.exe"
+    [string] $VCRedistUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    [string] $VCRedistPath = "$env:TEMP\vc_redist.x64.exe"
+
+    [void] InstallVCRedist() {
+        Write-Host "Installing Microsoft Visual C++ Redistributable..." -ForegroundColor Cyan
+        Invoke-WebRequest -Uri $this.VCRedistUrl -OutFile $this.VCRedistPath -UseBasicParsing
+        
+        $process = Start-Process -FilePath $this.VCRedistPath -ArgumentList "/quiet", "/norestart" -Wait -PassThru -NoNewWindow
+        if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) {
+            Write-Host "Warning: VC Redistributable installation exited with code: $($process.ExitCode), continuing anyway..." -ForegroundColor Yellow
+        } else {
+            Write-Host "Microsoft Visual C++ Redistributable installed successfully!" -ForegroundColor Green
+        }
+        
+        Remove-Item -Path $this.VCRedistPath -Force -ErrorAction SilentlyContinue
+    }
 
     [void] Download() {
         Write-Host "Downloading Cap installer..." -ForegroundColor Cyan
@@ -44,6 +60,7 @@ class CapInstaller {
     }
 
     [void] Run() {
+        $this.InstallVCRedist()
         $this.Download()
         try {
             $this.Install()
