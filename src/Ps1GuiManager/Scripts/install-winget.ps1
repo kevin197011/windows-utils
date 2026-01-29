@@ -20,64 +20,58 @@ $ErrorActionPreference = 'Stop'
 
 class WingetInstaller {
     [string] $DownloadUrl
+    [string] $DependenciesZipUrl
     [string] $InstallerPath
-    [string] $AppRuntimeUrl = "https://aka.ms/windowsappsdk/1.8/1.8.260101001/windowsappruntimeinstall-x64.exe"
-    [string] $AppRuntimePath = "$env:TEMP\windowsappruntimeinstall-x64.exe"
+    [string] $DependenciesZipPath = "$env:TEMP\winget-dependencies.zip"
+    [string] $DependenciesExtractPath = "$env:TEMP\winget-dependencies"
 
     WingetInstaller() {
         $this.InstallerPath = "$env:TEMP\winget.msixbundle"
     }
 
-    [bool] IsAppRuntimeInstalled() {
-        $pkg = Get-AppxPackage -Name "Microsoft.WindowsAppRuntime.1.8*" -ErrorAction SilentlyContinue
-        return ($null -ne $pkg)
-    }
-
-    [void] InstallAppRuntime() {
-        if ($this.IsAppRuntimeInstalled()) {
-            Write-Host "Windows App Runtime 1.8 is already installed."
-            return
-        }
-        Write-Host "Installing Windows App Runtime 1.8 (required dependency for winget)..."
-        Invoke-WebRequest -Uri $this.AppRuntimeUrl -OutFile $this.AppRuntimePath -UseBasicParsing
-        # Silent install; installer may require elevation (run script as Admin if it fails)
-        $proc = Start-Process -FilePath $this.AppRuntimePath -ArgumentList "/quiet" -Wait -PassThru
-        if (Test-Path $this.AppRuntimePath) {
-            Remove-Item $this.AppRuntimePath -Force -ErrorAction SilentlyContinue
-        }
-        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
-            Write-Host "Warning: Windows App Runtime installer exited with code $($proc.ExitCode). Continuing..."
-        }
-        Start-Sleep -Seconds 3
-        Write-Host "Windows App Runtime 1.8 installation completed."
-    }
-
-    [void] GetDownloadUrl() {
-        Write-Host "Fetching latest winget release URL..."
+    [void] GetDownloadUrls() {
+        Write-Host "Fetching latest winget release..."
         $release = Invoke-RestMethod -Uri "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
-        $this.DownloadUrl = $release.assets | Where-Object {
-            $_.name -like "*.msixbundle"
-        } | Select-Object -ExpandProperty browser_download_url -First 1
         
+        $this.DownloadUrl = $release.assets | Where-Object { $_.name -like "*.msixbundle" } | Select-Object -ExpandProperty browser_download_url -First 1
         if (-not $this.DownloadUrl) {
-            throw "Failed to find winget installer download URL"
+            throw "Failed to find winget installer (.msixbundle) in release"
         }
-        Write-Host "Download URL: $($this.DownloadUrl)"
+        
+        # Dependencies zip (contains Microsoft.WindowsAppRuntime.1.8 and other frameworks)
+        $depAsset = $release.assets | Where-Object { $_.name -like "*Dependencies*.zip" } | Select-Object -First 1
+        if ($depAsset) {
+            $this.DependenciesZipUrl = $depAsset.browser_download_url
+            Write-Host "Found dependencies: $($depAsset.name)"
+        } else {
+            # Fallback: official permalink for latest dependencies
+            $this.DependenciesZipUrl = "https://github.com/microsoft/winget-cli/releases/latest/download/DesktopAppInstaller_Dependencies.zip"
+            Write-Host "Using dependencies from: DesktopAppInstaller_Dependencies.zip"
+        }
+        Write-Host "Winget bundle: $($this.DownloadUrl)"
     }
 
     [void] DownloadInstaller() {
         Write-Host "Downloading winget installer..."
         Invoke-WebRequest -Uri $this.DownloadUrl -OutFile $this.InstallerPath -UseBasicParsing
-        Write-Host "Downloaded to: $($this.InstallerPath)"
+        Write-Host "Downloading winget dependencies (Windows App Runtime 1.8, etc.)..."
+        Invoke-WebRequest -Uri $this.DependenciesZipUrl -OutFile $this.DependenciesZipPath -UseBasicParsing
+        Write-Host "Extracting dependencies..."
+        if (Test-Path $this.DependenciesExtractPath) {
+            Remove-Item -Path $this.DependenciesExtractPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        Expand-Archive -Path $this.DependenciesZipPath -DestinationPath $this.DependenciesExtractPath -Force
+    }
+
+    [string[]] GetDependencyPaths() {
+        $paths = @()
+        $paths += Get-ChildItem -Path $this.DependenciesExtractPath -Recurse -Include "*.msix", "*.appx" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+        return $paths
     }
 
     [void] Install() {
-        # Step 1: Install Windows App Runtime 1.8 if missing (required by winget)
-        $this.InstallAppRuntime()
-
-        Write-Host "Installing/Upgrading winget..."
+        Write-Host "Installing/Upgrading winget with dependencies..."
         
-        # Check if winget is already installed
         $existingWinget = Get-AppxPackage -Name "Microsoft.DesktopAppInstaller" -ErrorAction SilentlyContinue
         if ($existingWinget) {
             Write-Host "Found existing winget installation. Upgrading..."
@@ -85,8 +79,14 @@ class WingetInstaller {
             Write-Host "Installing winget for the first time..."
         }
         
-        # Install or upgrade with force update to allow overwriting existing installation
-        Add-AppxPackage -Path $this.InstallerPath -ForceApplicationShutdown -ForceUpdateFromAnyVersion
+        $depPaths = $this.GetDependencyPaths()
+        if ($depPaths.Count -gt 0) {
+            Write-Host "Installing $($depPaths.Count) dependency package(s) with winget..."
+            Add-AppxPackage -Path $this.InstallerPath -DependencyPath $depPaths -ForceApplicationShutdown -ForceUpdateFromAnyVersion
+        } else {
+            Write-Host "No dependency packages found in zip; attempting direct install..."
+            Add-AppxPackage -Path $this.InstallerPath -ForceApplicationShutdown -ForceUpdateFromAnyVersion
+        }
         
         Write-Host "winget installed/upgraded successfully!"
         Write-Host "Refreshing environment variables..."
@@ -127,14 +127,17 @@ class WingetInstaller {
             Remove-Item -Path $this.InstallerPath -Force -ErrorAction SilentlyContinue
             Write-Host "Cleaned up installer file"
         }
-        if (Test-Path $this.AppRuntimePath) {
-            Remove-Item -Path $this.AppRuntimePath -Force -ErrorAction SilentlyContinue
+        if (Test-Path $this.DependenciesZipPath) {
+            Remove-Item -Path $this.DependenciesZipPath -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path $this.DependenciesExtractPath) {
+            Remove-Item -Path $this.DependenciesExtractPath -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 
     [void] Run() {
         try {
-            $this.GetDownloadUrl()
+            $this.GetDownloadUrls()
             $this.DownloadInstaller()
             $this.Install()
         }
