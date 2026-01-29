@@ -19,12 +19,41 @@ $ErrorActionPreference = 'Stop'
 # Description: Install OBS Studio from official installer
 
 class OBSInstaller {
-    [string] $DownloadUrl = "https://github.com/obsproject/obs-studio/releases/download/31.1.0/OBS-Studio-31.1.0-Full-Installer-x64.exe"
-    [string] $InstallerPath = "$env:TEMP\OBS-Studio-Full-Installer-x64.exe"
+    [string] $DownloadUrl = "https://github.com/obsproject/obs-studio/releases/download/32.0.4/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+    [string] $InstallerPath = "$env:TEMP\OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+    [int] $MaxRetries = 3
+    [int] $RetryDelaySeconds = 5
 
     [void] Download() {
         Write-Host "Downloading OBS Studio installer..." -ForegroundColor Cyan
-        Invoke-WebRequest -Uri $this.DownloadUrl -OutFile $this.InstallerPath -UseBasicParsing
+        
+        $retryCount = 0
+        $downloaded = $false
+        
+        while ($retryCount -lt $this.MaxRetries -and -not $downloaded) {
+            try {
+                $retryCount++
+                if ($retryCount -gt 1) {
+                    Write-Host "Retry attempt $retryCount of $($this.MaxRetries)..." -ForegroundColor Yellow
+                    Start-Sleep -Seconds $this.RetryDelaySeconds
+                }
+                
+                Invoke-WebRequest -Uri $this.DownloadUrl `
+                    -OutFile $this.InstallerPath `
+                    -UseBasicParsing `
+                    -TimeoutSec 300 `
+                    -ErrorAction Stop
+                
+                $downloaded = $true
+                Write-Host "Download completed successfully!" -ForegroundColor Green
+            } catch {
+                Write-Host "Download attempt $retryCount failed: $_" -ForegroundColor Yellow
+                
+                if ($retryCount -ge $this.MaxRetries) {
+                    throw "Failed to download OBS Studio after $($this.MaxRetries) attempts. Please check your internet connection and try again."
+                }
+            }
+        }
     }
 
     [void] Install() {
