@@ -97,19 +97,6 @@ class VSCodeInstaller {
 }
 
 # Main execution
-try {
-    # Check for Admin privileges (System installer needs it)
-    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    if (-not $isAdmin) {
-        Write-Warning "This script installs VS Code System wide and requires Administrator privileges."
-        Write-Warning "Please run as Administrator."
-        # Attempt anyway, installer might prompt UAC or fail
-    }
-
-    $installer = [VSCodeInstaller]::new()
-    $installer.Force = $Force
-    $installer.Run()
-} catch {
-    Write-Error $_.Exception.Message
-    exit 1
-}
+$installer = [VSCodeInstaller]::new()
+$installer.Force = $Force
+$installer.Run()
