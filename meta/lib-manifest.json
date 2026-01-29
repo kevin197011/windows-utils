@@ -1,6 +1,7 @@
 {
   "files": [
     "install-bandizip.ps1",
+    "install-caddy.ps1",
     "install-chrome.ps1",
     "install-obs.ps1",
     "install-snipaste.ps1",
