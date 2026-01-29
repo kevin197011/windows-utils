@@ -3,7 +3,6 @@
     "install-bandizip.ps1",
     "install-cap.ps1",
     "install-chrome.ps1",
-    "install-sharex.ps1",
     "install-snipaste.ps1",
     "install-winget.ps1"
   ]
