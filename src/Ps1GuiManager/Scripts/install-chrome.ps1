@@ -21,22 +21,41 @@ $ErrorActionPreference = 'Stop'
 class ChromeInstaller {
     [string] $PackageId = "Google.Chrome"
     [bool] $Silent = $true
+    [string] $WingetPath = $null
+
+    [void] RefreshPath() {
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    }
+
+    [string] GetWingetPath() {
+        if ($this.WingetPath) { return $this.WingetPath }
+        $this.RefreshPath()
+        $cmd = Get-Command winget -ErrorAction SilentlyContinue
+        if ($cmd) {
+            $this.WingetPath = $cmd.Source
+            return $this.WingetPath
+        }
+        $knownPath = "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe"
+        if (Test-Path $knownPath) {
+            $this.WingetPath = $knownPath
+            return $this.WingetPath
+        }
+        $null
+    }
 
     [bool] CheckWinget() {
-        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-            return $false
-        }
-        return $true
+        return ($null -ne $this.GetWingetPath())
     }
 
     [void] Install() {
-        if (-not $this.CheckWinget()) {
-            throw "winget is not installed. Please install winget first using install-winget.ps1"
+        $wingetExe = $this.GetWingetPath()
+        if (-not $wingetExe) {
+            throw "winget is not installed or not in PATH. Install winget first using install-winget.ps1, then open a new PowerShell window or run this script again."
         }
 
         # Check if Chrome is already installed
         try {
-            $null = winget list --id $this.PackageId --exact 2>$null
+            $null = & $wingetExe list --id $this.PackageId --exact 2>$null
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "Found existing Google Chrome installation. Upgrading to latest version..."
             } else {
@@ -55,7 +74,7 @@ class ChromeInstaller {
             "--force"
         )
         
-        $process = Start-Process -FilePath "winget" -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+        $process = Start-Process -FilePath $wingetExe -ArgumentList $arguments -Wait -PassThru -NoNewWindow
         
         # winget exit codes:
         # 0 = success (installed or upgraded)
