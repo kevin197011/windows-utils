@@ -21,9 +21,35 @@ $ErrorActionPreference = 'Stop'
 class WingetInstaller {
     [string] $DownloadUrl
     [string] $InstallerPath
+    [string] $AppRuntimeUrl = "https://aka.ms/windowsappsdk/1.8/1.8.260101001/windowsappruntimeinstall-x64.exe"
+    [string] $AppRuntimePath = "$env:TEMP\windowsappruntimeinstall-x64.exe"
 
     WingetInstaller() {
         $this.InstallerPath = "$env:TEMP\winget.msixbundle"
+    }
+
+    [bool] IsAppRuntimeInstalled() {
+        $pkg = Get-AppxPackage -Name "Microsoft.WindowsAppRuntime.1.8*" -ErrorAction SilentlyContinue
+        return ($null -ne $pkg)
+    }
+
+    [void] InstallAppRuntime() {
+        if ($this.IsAppRuntimeInstalled()) {
+            Write-Host "Windows App Runtime 1.8 is already installed."
+            return
+        }
+        Write-Host "Installing Windows App Runtime 1.8 (required dependency for winget)..."
+        Invoke-WebRequest -Uri $this.AppRuntimeUrl -OutFile $this.AppRuntimePath -UseBasicParsing
+        # Silent install; installer may require elevation (run script as Admin if it fails)
+        $proc = Start-Process -FilePath $this.AppRuntimePath -ArgumentList "/quiet" -Wait -PassThru
+        if (Test-Path $this.AppRuntimePath) {
+            Remove-Item $this.AppRuntimePath -Force -ErrorAction SilentlyContinue
+        }
+        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+            Write-Host "Warning: Windows App Runtime installer exited with code $($proc.ExitCode). Continuing..."
+        }
+        Start-Sleep -Seconds 3
+        Write-Host "Windows App Runtime 1.8 installation completed."
     }
 
     [void] GetDownloadUrl() {
@@ -41,11 +67,14 @@ class WingetInstaller {
 
     [void] DownloadInstaller() {
         Write-Host "Downloading winget installer..."
-        Invoke-WebRequest -Uri $this.DownloadUrl -OutFile $this.InstallerPath
+        Invoke-WebRequest -Uri $this.DownloadUrl -OutFile $this.InstallerPath -UseBasicParsing
         Write-Host "Downloaded to: $($this.InstallerPath)"
     }
 
     [void] Install() {
+        # Step 1: Install Windows App Runtime 1.8 if missing (required by winget)
+        $this.InstallAppRuntime()
+
         Write-Host "Installing/Upgrading winget..."
         
         # Check if winget is already installed
@@ -97,6 +126,9 @@ class WingetInstaller {
         if (Test-Path $this.InstallerPath) {
             Remove-Item -Path $this.InstallerPath -Force -ErrorAction SilentlyContinue
             Write-Host "Cleaned up installer file"
+        }
+        if (Test-Path $this.AppRuntimePath) {
+            Remove-Item -Path $this.AppRuntimePath -Force -ErrorAction SilentlyContinue
         }
     }
 
