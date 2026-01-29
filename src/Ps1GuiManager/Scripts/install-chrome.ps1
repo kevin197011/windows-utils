@@ -16,84 +16,22 @@ $ErrorActionPreference = 'Stop'
 # Or shorter:
 # irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/src/Ps1GuiManager/Scripts/install-chrome.ps1 | iex
 
-# Description: Install or upgrade Google Chrome browser using winget
+# Description: Install or upgrade Google Chrome from official installer (no winget)
 
-class ChromeInstaller {
-    [string] $PackageId = "Google.Chrome"
-    [bool] $Silent = $true
-    [string] $WingetPath = $null
+$ChromeInstallerUrl = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
+$InstallerPath = "$env:TEMP\chrome_installer.exe"
 
-    [void] RefreshPath() {
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-    }
+Write-Host "Downloading Google Chrome installer..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $ChromeInstallerUrl -OutFile $InstallerPath -UseBasicParsing
 
-    [string] GetWingetPath() {
-        if ($this.WingetPath) { return $this.WingetPath }
-        $this.RefreshPath()
-        $cmd = Get-Command winget -ErrorAction SilentlyContinue
-        if ($cmd) {
-            $this.WingetPath = $cmd.Source
-            return $this.WingetPath
-        }
-        $knownPath = "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe"
-        if (Test-Path $knownPath) {
-            $this.WingetPath = $knownPath
-            return $this.WingetPath
-        }
-        $null
-    }
+Write-Host "Installing Google Chrome (silent)..." -ForegroundColor Cyan
+$process = Start-Process -FilePath $InstallerPath -ArgumentList "/silent", "/install" -Wait -PassThru -NoNewWindow
 
-    [bool] CheckWinget() {
-        return ($null -ne $this.GetWingetPath())
-    }
-
-    [void] Install() {
-        $wingetExe = $this.GetWingetPath()
-        if (-not $wingetExe) {
-            throw "winget is not installed or not in PATH. Install winget first using install-winget.ps1, then open a new PowerShell window or run this script again."
-        }
-
-        # Check if Chrome is already installed
-        try {
-            $null = & $wingetExe list --id $this.PackageId --exact 2>$null
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "Found existing Google Chrome installation. Upgrading to latest version..."
-            } else {
-                Write-Host "Installing Google Chrome using winget..."
-            }
-        } catch {
-            Write-Host "Installing Google Chrome using winget..."
-        }
-        
-        $arguments = @(
-            "install",
-            "--id", $this.PackageId,
-            "--silent",
-            "--accept-package-agreements",
-            "--accept-source-agreements",
-            "--force"
-        )
-        
-        $process = Start-Process -FilePath $wingetExe -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-        
-        # winget exit codes:
-        # 0 = success (installed or upgraded)
-        # 0x8A150011 = package already installed (but --force should upgrade it)
-        # Other codes = error
-        if ($process.ExitCode -eq 0) {
-            Write-Host "Google Chrome installed/upgraded successfully!"
-        } elseif ($process.ExitCode -eq 0x8A150011) {
-            Write-Host "Google Chrome is already installed at the latest version, or upgrade completed."
-        } else {
-            throw "Failed to install/upgrade Google Chrome. Exit code: $($process.ExitCode)"
-        }
-    }
-
-    [void] Run() {
-        $this.Install()
-    }
+if ($process.ExitCode -eq 0) {
+    Write-Host "Google Chrome installed/upgraded successfully!" -ForegroundColor Green
+} else {
+    throw "Chrome installer exited with code: $($process.ExitCode)"
 }
 
-# Main execution
-$installer = [ChromeInstaller]::new()
-$installer.Run()
+# Cleanup
+Remove-Item -Path $InstallerPath -Force -ErrorAction SilentlyContinue

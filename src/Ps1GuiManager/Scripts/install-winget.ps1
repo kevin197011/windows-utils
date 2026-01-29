@@ -6,6 +6,18 @@
 # Error handling
 $ErrorActionPreference = 'Stop'
 
+# Usage:
+# powershell -ExecutionPolicy Bypass -File install-winget.ps1
+# Or in PowerShell:
+# .\install-winget.ps1
+
+# Remote exec:
+# powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/kevin197011/windows-utils/main/src/Ps1GuiManager/Scripts/install-winget.ps1').Content"
+# Or shorter:
+# irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/src/Ps1GuiManager/Scripts/install-winget.ps1 | iex
+
+# Description: Install or upgrade winget (Windows Package Manager) from GitHub release
+
 class WingetInstaller {
     [string] $DownloadUrl
     [string] $DependenciesZipUrl

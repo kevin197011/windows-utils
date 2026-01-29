@@ -16,65 +16,43 @@ $ErrorActionPreference = 'Stop'
 # Or shorter:
 # irm https://raw.githubusercontent.com/kevin197011/windows-utils/main/src/Ps1GuiManager/Scripts/install-snipaste.ps1 | iex
 
-# Description: Install or upgrade Snipaste screenshot tool using winget
+# Description: Install or upgrade Snipaste from official portable zip (no winget).
+# Installs to %LOCALAPPDATA%\Snipaste (write-friendly; avoid Program Files per official docs).
 
-class SnipasteInstaller {
-    [string] $PackageId = "Snipaste.Snipaste"
-    [bool] $Silent = $true
+$SnipasteZipUrl = "https://dl.snipaste.com/win-x64"
+$InstallDir = "$env:LOCALAPPDATA\Snipaste"
+$ZipPath = "$env:TEMP\Snipaste-win-x64.zip"
 
-    [bool] CheckWinget() {
-        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-            return $false
-        }
-        return $true
-    }
+Write-Host "Downloading Snipaste (portable)..." -ForegroundColor Cyan
+Invoke-WebRequest -Uri $SnipasteZipUrl -OutFile $ZipPath -UseBasicParsing
 
-    [void] Install() {
-        if (-not $this.CheckWinget()) {
-            throw "winget is not installed. Please install winget first using install-winget.ps1"
-        }
+Write-Host "Extracting to $InstallDir ..." -ForegroundColor Cyan
+if (-not (Test-Path $InstallDir)) {
+    New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+}
+Expand-Archive -Path $ZipPath -DestinationPath $InstallDir -Force
 
-        # Check if Snipaste is already installed
-        try {
-            $null = winget list --id $this.PackageId --exact 2>$null
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "Found existing Snipaste installation. Upgrading to latest version..."
-            } else {
-                Write-Host "Installing Snipaste using winget..."
-            }
-        } catch {
-            Write-Host "Installing Snipaste using winget..."
-        }
-        
-        $arguments = @(
-            "install",
-            "--id", $this.PackageId,
-            "--silent",
-            "--accept-package-agreements",
-            "--accept-source-agreements",
-            "--force"
-        )
-        
-        $process = Start-Process -FilePath "winget" -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-        
-        # winget exit codes:
-        # 0 = success (installed or upgraded)
-        # 0x8A150011 = package already installed (but --force should upgrade it)
-        # Other codes = error
-        if ($process.ExitCode -eq 0) {
-            Write-Host "Snipaste installed/upgraded successfully!"
-        } elseif ($process.ExitCode -eq 0x8A150011) {
-            Write-Host "Snipaste is already installed at the latest version, or upgrade completed."
-        } else {
-            throw "Failed to install/upgrade Snipaste. Exit code: $($process.ExitCode)"
-        }
-    }
-
-    [void] Run() {
-        $this.Install()
+$exePath = Join-Path $InstallDir "Snipaste.exe"
+if (-not (Test-Path $exePath)) {
+    # Zip may contain a single top-level folder
+    $sub = Get-ChildItem -Path $InstallDir -Directory | Select-Object -First 1
+    if ($sub) {
+        Get-ChildItem -Path $sub.FullName -Recurse | Move-Item -Destination $InstallDir -Force
+        Remove-Item -Path $sub.FullName -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
+if (Test-Path $exePath) {
+    Write-Host "Snipaste installed at: $exePath" -ForegroundColor Green
+    # Optional: create Desktop shortcut
+    $wsh = New-Object -ComObject WScript.Shell
+    $shortcut = $wsh.CreateShortcut("$env:USERPROFILE\Desktop\Snipaste.lnk")
+    $shortcut.TargetPath = $exePath
+    $shortcut.WorkingDirectory = $InstallDir
+    $shortcut.Save()
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wsh) | Out-Null
+    Write-Host "Desktop shortcut created." -ForegroundColor Green
+} else {
+    throw "Snipaste.exe not found after extract. Check contents of $InstallDir"
+}
 
-# Main execution
-$installer = [SnipasteInstaller]::new()
-$installer.Run()
+Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue
