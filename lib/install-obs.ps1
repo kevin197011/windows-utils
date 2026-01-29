@@ -19,40 +19,54 @@ $ErrorActionPreference = 'Stop'
 # Description: Install OBS Studio from official installer
 
 class OBSInstaller {
-    [string] $DownloadUrl = "https://github.com/obsproject/obs-studio/releases/download/32.0.4/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+    [string] $DownloadUrl = "https://cdn-fastly.obsproject.com/downloads/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
+    [string] $GithubUrl = "https://github.com/obsproject/obs-studio/releases/download/32.0.4/OBS-Studio-32.0.4-Windows-x64-Installer.exe"
     [string] $InstallerPath = "$env:TEMP\OBS-Studio-32.0.4-Windows-x64-Installer.exe"
-    [int] $MaxRetries = 3
-    [int] $RetryDelaySeconds = 5
+    [int] $MaxRetries = 5
+    [int] $RetryDelaySeconds = 10
 
     [void] Download() {
         Write-Host "Downloading OBS Studio installer..." -ForegroundColor Cyan
         
-        $retryCount = 0
+        $urls = @($this.DownloadUrl, $this.GithubUrl)
         $downloaded = $false
         
-        while ($retryCount -lt $this.MaxRetries -and -not $downloaded) {
-            try {
-                $retryCount++
-                if ($retryCount -gt 1) {
-                    Write-Host "Retry attempt $retryCount of $($this.MaxRetries)..." -ForegroundColor Yellow
-                    Start-Sleep -Seconds $this.RetryDelaySeconds
-                }
-                
-                Invoke-WebRequest -Uri $this.DownloadUrl `
-                    -OutFile $this.InstallerPath `
-                    -UseBasicParsing `
-                    -TimeoutSec 300 `
-                    -ErrorAction Stop
-                
-                $downloaded = $true
-                Write-Host "Download completed successfully!" -ForegroundColor Green
-            } catch {
-                Write-Host "Download attempt $retryCount failed: $_" -ForegroundColor Yellow
-                
-                if ($retryCount -ge $this.MaxRetries) {
-                    throw "Failed to download OBS Studio after $($this.MaxRetries) attempts. Please check your internet connection and try again."
+        foreach ($url in $urls) {
+            if ($downloaded) { break }
+            
+            Write-Host "Attempting download from: $url" -ForegroundColor Cyan
+            
+            $retryCount = 0
+            while ($retryCount -lt $this.MaxRetries -and -not $downloaded) {
+                try {
+                    $retryCount++
+                    if ($retryCount -gt 1) {
+                        Write-Host "Retry attempt $retryCount of $($this.MaxRetries)..." -ForegroundColor Yellow
+                        Start-Sleep -Seconds $this.RetryDelaySeconds
+                    }
+                    
+                    $ProgressPreference = 'SilentlyContinue'
+                    Invoke-WebRequest -Uri $url `
+                        -OutFile $this.InstallerPath `
+                        -UseBasicParsing `
+                        -TimeoutSec 600 `
+                        -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" `
+                        -ErrorAction Stop
+                    
+                    $downloaded = $true
+                    Write-Host "Download completed successfully!" -ForegroundColor Green
+                } catch {
+                    Write-Host "Download attempt $retryCount failed: $_" -ForegroundColor Yellow
+                    
+                    if ($retryCount -ge $this.MaxRetries) {
+                        Write-Host "Failed to download from this URL after $($this.MaxRetries) attempts." -ForegroundColor Yellow
+                    }
                 }
             }
+        }
+        
+        if (-not $downloaded) {
+            throw "Failed to download OBS Studio from all available sources. Please check your internet connection."
         }
     }
 
