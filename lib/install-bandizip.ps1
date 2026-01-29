@@ -19,11 +19,13 @@ $ErrorActionPreference = 'Stop'
 # Description: Install or upgrade Bandizip from official installer (no winget)
 
 class BandizipInstaller {
-    [string] $DownloadUrl = "https://dl.bandisoft.com/bandizip.std/BANDIZIP-SETUP-STD-ALL.EXE"
+    # Official download (dl.php?std-all = Standard edition, all CPUs). Regional mirrors: std-all-us, std-all-eu, std-all-sg, etc.
+    [string] $DownloadUrl = "https://www.bandisoft.com/bandizip/dl.php?std-all"
     [string] $InstallerPath = "$env:TEMP\Bandizip-Setup.exe"
 
     [void] Download() {
         Write-Host "Downloading Bandizip installer..." -ForegroundColor Cyan
+        $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -Uri $this.DownloadUrl -OutFile $this.InstallerPath -UseBasicParsing
     }
 
