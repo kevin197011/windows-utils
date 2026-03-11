@@ -6,6 +6,7 @@
     "install-obs.ps1",
     "install-snipaste.ps1",
     "install-vscode.ps1",
-    "install-winget.ps1"
+    "install-winget.ps1",
+    "set-timezone-utc8-ntp.ps1"
   ]
 }
